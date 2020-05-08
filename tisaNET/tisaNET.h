@@ -39,7 +39,7 @@ namespace tisaNET {
 	struct Trainer {
 		tisaMat::matrix* dW;
 		std::vector<double> dB;
-		std::vector<std::vector<double>> prevY;
+		std::vector<std::vector<double>> Y;
 	};
 
 	double step(double X);
@@ -50,10 +50,10 @@ namespace tisaNET {
 	bool print01(int bit, long Value);
 	
 	//平均二乗誤差関数
-	std::vector<double> mean_squared_error(Data_set& data_set, std::vector<std::vector<double>>& output);
+	std::vector<double> mean_squared_error(std::vector<std::vector<double>>&, std::vector<std::vector<double>>& output);
 
 	//交差エントロピー関数
-	std::vector<double> cross_entropy(Data_set& teacher, std::vector<std::vector<double>>& output);
+	std::vector<double> cross_entropy(std::vector<std::vector<double>>&, std::vector<std::vector<double>>& output);
 
 	class Model {
 	public:
@@ -70,7 +70,7 @@ namespace tisaNET {
 		tisaMat::matrix F_propagate(tisaMat::matrix& Input_data, std::vector<Trainer>& trainer);
 
 		//逆誤差伝播する
-		void B_propagate(std::vector<std::vector<double>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer,double lr);
+		void B_propagate(std::vector<std::vector<double>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer,double lr, tisaMat::matrix& input_batch);
 
 		//ネットワークの層の数を取り出す
 		int number_of_layer();
@@ -80,7 +80,7 @@ namespace tisaNET {
 
 	private:
 		std::vector<layer> net_layer;
-		std::vector<double> (*Ef[2])(Data_set&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy };
+		std::vector<double> (*Ef[2])(std::vector<std::vector<double>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy };
 		double (*Af[3])(double) = { sigmoid,ReLU,step };
 		std::random_device rnd;
 	};
