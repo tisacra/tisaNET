@@ -59,4 +59,7 @@ namespace tisaMat {
 
 	//vecをスカラー倍する
 	void vector_multiscalar(std::vector<double>& vec, double scalar);
+
+	//vecを表示する
+	void vector_show(std::vector<double>& vec);
 }

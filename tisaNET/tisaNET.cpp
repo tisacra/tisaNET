@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 namespace tisaNET{
+
     double step(double a) {
         double Y;
         if (a == 0.0) {
@@ -30,6 +31,7 @@ namespace tisaNET{
         }
     }
 
+    //おまけ
     bool print01(int bit, long a) {
         char* bi;
         bi = (char*)malloc(sizeof(char) * bit);
@@ -76,12 +78,11 @@ namespace tisaNET{
 
     void Model::Create_Layer(int nodes, uint8_t Activation) {
         layer tmp;
-        srand(rnd());
         if (Activation != INPUT) {
             int input = net_layer.back().node;
             tmp.node = nodes;
             tmp.Activation_f = Activation;
-            tmp.W = new tisaMat::matrix(input, nodes,(rand() % 100) * 0.1);
+            tmp.W = new tisaMat::matrix(input, nodes);
             tmp.B = std::vector<double>(nodes);
             tmp.Output = std::vector<double>(nodes);
         }
@@ -92,10 +93,9 @@ namespace tisaNET{
         }
         net_layer.push_back(tmp);
     }
-
+    //おまけ(重みとバイアスを任意の値で初期化)
     void Model::Create_Layer(int nodes, uint8_t Activation,double init) {
         layer tmp;
-        srand(rnd());
         if (Activation != INPUT) {
             int input = net_layer.back().node;
             tmp.node = nodes;
@@ -246,6 +246,39 @@ namespace tisaNET{
         return net_layer.size();
     }
 
+    void Model::initialize() {
+        std::random_device seed_gen;
+        std::default_random_engine rand_gen;
+        std::normal_distribution<> dist;
+
+        //0番の層は入力の分配にしかつかわないので１番の層から
+        for (int current_layer = 1; current_layer < number_of_layer();current_layer++) {
+            int prev_nodes = net_layer[current_layer - 1].node;
+            switch (net_layer[current_layer].Activation_f) {
+            case SIGMOID://Xaivierの初期値
+                {
+                    std::normal_distribution<>::param_type param(0.0, sqrt(1.0 / prev_nodes));
+                    dist.param(param);
+                }
+                break;
+            default://Heの初期値
+                {
+                    std::normal_distribution<>::param_type param(0.0, sqrt(2.0 / prev_nodes));
+                    dist.param(param);
+                }
+                break;
+            }
+
+            int W_row = net_layer[current_layer].W->mat_RC[0];
+            int W_column = net_layer[current_layer].W->mat_RC[1];
+            for (int R = 0; R < W_row;R++) {
+                for (int C = 0; C < W_column;C++) {
+                    net_layer[current_layer].W->elements[R][C] = dist(rand_gen);
+                }
+            }
+        }
+    }
+
     void Model::train(double learning_rate,Data_set& train_data, Data_set& test_data, int epoc, int iteration, uint8_t Error_func) {
         int output_num = net_layer.back().node;
         int batch_size = train_data.sample_data.size() / iteration;
@@ -306,12 +339,20 @@ namespace tisaNET{
                     //バイアス
                     net_layer[layer].B = *(tisaMat::vector_subtract(net_layer[layer].B, trainer[layer - 1].dB));
                     printf("%d layer dB\n", layer);
-                    for (int i = 0; i < trainer[layer - 1].dB.size(); i++) {
-                        printf("%lf ", trainer[layer - 1].dB[i]);
-                    }
-                    printf("\n");
+                    tisaMat::vector_show(trainer[layer - 1].dB);
                 }
             }
+
+            //今の重みとか表示(デバッグ用)
+            for (int layer = 1; layer < net_layer.size(); layer++) {
+                //重み
+                printf("W\n");
+                net_layer[layer].W->show();
+                //バイアス
+                printf("B\n");
+                tisaMat::vector_show(net_layer[layer].B);
+            }
+
             //テスト(output_iterateは使いまわし)
             output_iterate = F_propagate(test_mat);
             printf("| TEST |\n");
@@ -321,10 +362,7 @@ namespace tisaNET{
             output_iterate.show();
             error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
             printf("Error : ");
-            for (int i = 0;i < error.size();i++) {
-                printf("%lf ",error[i]);
-            }
-            printf("\n");
+            tisaMat::vector_show(error);
         }
     }
 }

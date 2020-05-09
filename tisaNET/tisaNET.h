@@ -75,6 +75,9 @@ namespace tisaNET {
 		//ネットワークの層の数を取り出す
 		int number_of_layer();
 
+		//モデルの重みとかを初期化する
+		void initialize();
+
 		//モデルを訓練する
 		void train(double learning_rate, Data_set& train_data, Data_set& test_data, int epoc, int iteration, uint8_t Error_func);
 
@@ -82,6 +85,5 @@ namespace tisaNET {
 		std::vector<layer> net_layer;
 		std::vector<double> (*Ef[2])(std::vector<std::vector<double>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy };
 		double (*Af[3])(double) = { sigmoid,ReLU,step };
-		std::random_device rnd;
 	};
 }

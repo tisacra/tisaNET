@@ -12,6 +12,8 @@ int main() {
 	tisaMat::matrix test2 = *test1;
 
 	test2.show();
+
+	tisaMat::vector_show(d[0]);
 	_CrtDumpMemoryLeaks();
 	return 0;
 }
