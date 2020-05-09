@@ -17,6 +17,6 @@ int main()
     model.Create_Layer(1, STEP);
     
     model.initialize();
-    model.train(0.5,train_data,test_data,200,4,MEAN_SQUARED_ERROR);
+    model.train(0.5,train_data,test_data,600,4,MEAN_SQUARED_ERROR);
     return 0;
 }

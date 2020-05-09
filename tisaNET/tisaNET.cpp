@@ -280,6 +280,15 @@ namespace tisaNET{
     }
 
     void Model::train(double learning_rate,Data_set& train_data, Data_set& test_data, int epoc, int iteration, uint8_t Error_func) {
+        if (net_layer[0].node != train_data.sample_data[0].size()) {
+            printf("Input size and number of input layer's nodes do not match");
+            exit(EXIT_FAILURE);
+        }
+        if (net_layer.back().node != train_data.answer[0].size()) {
+            printf("Output size and number of output layer's nodes do not match");
+            exit(EXIT_FAILURE);
+        }
+        
         int output_num = net_layer.back().node;
         int batch_size = train_data.sample_data.size() / iteration;
         tisaMat::matrix output_iterate(batch_size,output_num);
@@ -316,6 +325,7 @@ namespace tisaNET{
                 printf("input\n");
                 input_iterate.show();
                 output_iterate = F_propagate(input_iterate, trainer);
+
                 printf("output\n");
                 output_iterate.show();
                 printf("answer\n");
@@ -329,17 +339,28 @@ namespace tisaNET{
                 }
                 printf("\n");
 
-                B_propagate(teach_iterate, output_iterate, Error_func, trainer, learning_rate,input_iterate);
-                //トレーナーの値を使って重みを調整する
-                for (int layer = 1; layer < net_layer.size(); layer++) {
-                    //重み
-                    net_layer[layer].W = tisaMat::matrix_subtract(*net_layer[layer].W, *trainer[layer - 1].dW);
-                    printf("%d layer dW\n", layer);
-                    trainer[layer - 1].dW->show();
-                    //バイアス
-                    net_layer[layer].B = *(tisaMat::vector_subtract(net_layer[layer].B, trainer[layer - 1].dB));
-                    printf("%d layer dB\n", layer);
-                    tisaMat::vector_show(trainer[layer - 1].dB);
+                bool have_error = 0;
+                for (int i = 0; i < error.size();i++) {
+                    if (error[i] != 0.0) {
+                        have_error = 1;
+                        break;
+                    }
+                }
+
+
+                if (have_error) {
+                    B_propagate(teach_iterate, output_iterate, Error_func, trainer, learning_rate, input_iterate);
+                    //トレーナーの値を使って重みを調整する
+                    for (int layer = 1; layer < net_layer.size(); layer++) {
+                        //重み
+                        net_layer[layer].W = tisaMat::matrix_subtract(*net_layer[layer].W, *trainer[layer - 1].dW);
+                        printf("%d layer dW\n", layer);
+                        trainer[layer - 1].dW->show();
+                        //バイアス
+                        net_layer[layer].B = *(tisaMat::vector_subtract(net_layer[layer].B, trainer[layer - 1].dB));
+                        printf("%d layer dB\n", layer);
+                        tisaMat::vector_show(trainer[layer - 1].dB);
+                    }
                 }
             }
 
@@ -363,6 +384,18 @@ namespace tisaNET{
             error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
             printf("Error : ");
             tisaMat::vector_show(error);
+
+            bool have_error = 0;
+            for (int i = 0; i < error.size(); i++) {
+                if (error[i] != 0.0) {
+                    have_error = 1;
+                    break;
+                }
+            }
+
+            if (have_error == 0) {
+                break;
+            }
         }
     }
 }
