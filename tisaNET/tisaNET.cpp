@@ -174,8 +174,8 @@ namespace tisaNET{
         //初回限定で誤差をセットして学習率もかける
         tisaMat::matrix error_matrix(teacher);
         error_matrix = *(tisaMat::matrix_subtract(output,error_matrix));
-        printf("error_matrix for propagate\n");
-        error_matrix.show();
+        //printf("error_matrix for propagate\n");
+        //error_matrix.show();
         error_matrix.multi_scalar(lr);
 
         //重みとかの更新量を求める前にリフレッシュ
@@ -389,11 +389,11 @@ namespace tisaNET{
             file.write(reinterpret_cast<char*>(&net_layer[current_layer].B[0]), node * sizeof(double));
         }
 
-        printf("The file was output successfully\n");
+        printf("The file was output successfully : %s\n",filename);
     }
 
     void Model::train(double learning_rate,Data_set& train_data, Data_set& test_data, int epoc, int iteration, uint8_t Error_func) {
-        if (net_layer[0].node != train_data.sample_data[0].size()) {
+        if (net_layer[0].node != train_data.data[0].size()) {
             printf("Input size and number of input layer's nodes do not match");
             exit(EXIT_FAILURE);
         }
@@ -403,12 +403,12 @@ namespace tisaNET{
         }
         
         int output_num = net_layer.back().node;
-        int batch_size = train_data.sample_data.size() / iteration;
+        int batch_size = train_data.data.size() / iteration;
         tisaMat::matrix output_iterate(batch_size,output_num);
-        tisaMat::matrix input_iterate(batch_size, train_data.sample_data[0].size());
+        tisaMat::matrix input_iterate(batch_size, train_data.data[0].size());
         tisaMat::matrix answer_iterate(batch_size, output_num);
         std::vector<double> error(output_num);
-        tisaMat::matrix test_mat(test_data.sample_data);
+        tisaMat::matrix test_mat(test_data.data);
         std::vector<std::vector<double>> teach_iterate(batch_size);
 
         //バックプロパゲーションの時に重みの更新量を記憶するトレーナーをつくる
@@ -427,30 +427,30 @@ namespace tisaNET{
         for (int ep = 0; ep < epoc; ep++) {
             for (int i = 0; i < iteration; i++) {
 
-                if (train_data.sample_data.size() < batch_size * i) break;
+                if (train_data.data.size() < batch_size * i) break;
 
                 //次のイテレーションでつかう入力の行列をつくる
                 for (int j = 0; j < batch_size; j++) {
-                    input_iterate.elements[j] = train_data.sample_data[(batch_size * i) + j];
+                    input_iterate.elements[j] = train_data.data[(batch_size * i) + j];
                     teach_iterate[j] = train_data.answer[(batch_size * i) + j];
                 }
-                printf("| %d time |\n",ep);
-                printf("input\n");
-                input_iterate.show();
+                printf("| epoc : %6d |",ep);
+
+                
+                //printf("input\n");
+                //input_iterate.show();
                 output_iterate = F_propagate(input_iterate, trainer);
 
-                printf("output\n");
-                output_iterate.show();
-                printf("answer\n");
-                tisaMat::matrix answer_matrix(teach_iterate);
-                answer_matrix.show();
+                //printf("output\n");
+                //output_iterate.show();
+                //printf("answer\n");
+                //tisaMat::matrix answer_matrix(teach_iterate);
+                //answer_matrix.show();
+                
                 
                 error = (*Ef[Error_func])(teach_iterate, output_iterate.elements);
-                printf("Error (error_func:mode %d)  ", Error_func);
-                for (int i = 0; i < error.size(); i++) {
-                    printf("%lf ", error[i]);
-                }
-                printf("\n");
+                printf("Error   :  ");
+                tisaMat::vector_show(error);
 
                 bool have_error = 0;
                 for (int i = 0; i < error.size();i++) {
@@ -460,23 +460,22 @@ namespace tisaNET{
                     }
                 }
 
-
                 if (have_error) {
                     B_propagate(teach_iterate, output_iterate, Error_func, trainer, learning_rate, input_iterate);
                     //トレーナーの値を使って重みを調整する
                     for (int layer = 1; layer < net_layer.size(); layer++) {
                         //重み
                         net_layer[layer].W = tisaMat::matrix_subtract(*net_layer[layer].W, *trainer[layer - 1].dW);
-                        printf("%d layer dW\n", layer);
-                        trainer[layer - 1].dW->show();
+                        //printf("%d layer dW\n", layer);
+                        //trainer[layer - 1].dW->show();
                         //バイアス
                         net_layer[layer].B = *(tisaMat::vector_subtract(net_layer[layer].B, trainer[layer - 1].dB));
-                        printf("%d layer dB\n", layer);
-                        tisaMat::vector_show(trainer[layer - 1].dB);
+                        //printf("%d layer dB\n", layer);
+                        //tisaMat::vector_show(trainer[layer - 1].dB);
                     }
                 }
             }
-
+            /*
             //今の重みとか表示(デバッグ用)
             for (int layer = 1; layer < net_layer.size(); layer++) {
                 //重み
@@ -486,14 +485,15 @@ namespace tisaNET{
                 printf("B\n");
                 tisaMat::vector_show(net_layer[layer].B);
             }
-
+            */
+            
             //テスト(output_iterateは使いまわし)
             output_iterate = F_propagate(test_mat);
             printf("| TEST |\n");
-            printf("test_input\n");
-            test_mat.show();
-            printf("test_output\n");
-            output_iterate.show();
+            //printf("test_input\n");
+            //test_mat.show();
+            //printf("test_output\n");
+            //output_iterate.show();
             error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
             printf("Error : ");
             tisaMat::vector_show(error);

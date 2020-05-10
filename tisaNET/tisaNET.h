@@ -24,7 +24,7 @@
 namespace tisaNET {
 
 	struct Data_set {
-		std::vector<std::vector<double>> sample_data;
+		std::vector<std::vector<double>> data;
 		std::vector<std::vector<double>> answer;
 	};
 
