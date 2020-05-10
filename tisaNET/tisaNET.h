@@ -29,15 +29,15 @@ namespace tisaNET {
 	};
 
 	struct layer {
-		uint8_t Activation_f;
-		uint8_t node;
-		tisaMat::matrix* W;
+		uint8_t Activation_f = 0;
+		uint8_t node = 0;
+		tisaMat::matrix *W = nullptr;
 		std::vector<double> B;
 		std::vector<double> Output;
 	};
 
 	struct Trainer {
-		tisaMat::matrix* dW;
+		tisaMat::matrix* dW = nullptr;
 		std::vector<double> dB;
 		std::vector<std::vector<double>> Y;
 	};
@@ -80,6 +80,12 @@ namespace tisaNET {
 
 		//モデルを訓練する
 		void train(double learning_rate, Data_set& train_data, Data_set& test_data, int epoc, int iteration, uint8_t Error_func);
+
+		//モデルのファイル(.tp)を読み込む
+		void load_model(const char* tp_file);
+
+		//モデルをファイルに出力する
+		void save_model(const char* tp_file);
 
 	private:
 		std::vector<layer> net_layer;

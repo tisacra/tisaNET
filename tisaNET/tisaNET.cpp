@@ -2,6 +2,14 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fstream>
+
+#define format_key "tisaNET"
+#define data_head "DATA"
+
+#define format_key_size sizeof(char) * 7
+#define data_head_size sizeof(char) * 4
+
 
 namespace tisaNET{
 
@@ -88,7 +96,7 @@ namespace tisaNET{
         }
         else {
             tmp.node = nodes;
-            tmp.Activation_f = NULL;
+            tmp.Activation_f = Activation;
             tmp.Output = std::vector<double>(nodes);
         }
         net_layer.push_back(tmp);
@@ -106,6 +114,7 @@ namespace tisaNET{
         }
         else {
             tmp.node = nodes;
+            tmp.Activation_f = Activation;
             tmp.Activation_f = NULL;
             tmp.Output = std::vector<double>(nodes);
         }
@@ -277,6 +286,110 @@ namespace tisaNET{
                 }
             }
         }
+    }
+
+    void Model::load_model(const char* tp_file) {
+        std::ifstream file(tp_file,std::ios::binary);
+        if (!file) {
+            printf("Can not open file : %s\n",tp_file);
+            exit(EXIT_FAILURE);
+        }
+
+        char file_check[7];
+        const char* format_checker = format_key;
+        file.read(file_check, format_key_size);
+        for (int i = 0; i < 7; i++) {
+            if (file_check[i] != format_checker[i]) {
+                printf("The file format is incorrect : %s\n", tp_file);
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        int layer = 0;
+        file.read(reinterpret_cast<char*>(&layer),sizeof(int));
+        int *node = new int[layer];
+        uint8_t *Activation_f = new uint8_t[layer];
+        file.read(reinterpret_cast<char*>(node),layer * sizeof(int));
+        file.read(reinterpret_cast<char*>(Activation_f),layer * sizeof(uint8_t));
+
+        const char* Data_head = data_head;
+        file.read(file_check, data_head_size);
+        for (int i = 0; i < 4; i++) {
+            if (file_check[i] != Data_head[i]) {
+                printf("failed to read parameter\n");
+                printf("The file maybe corrapted : %s\n", tp_file);
+                delete[] node;
+                delete[] Activation_f;
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        for (int current_layer = 0; current_layer < layer;current_layer++) {
+            Create_Layer(node[current_layer],Activation_f[current_layer]);
+        }
+
+        for (int current_layer = 1; current_layer < layer; current_layer++) {
+            int input = net_layer[current_layer - 1].node;
+            int current_node = net_layer[current_layer].node;
+            std::vector<double> tmp_row(current_node);
+
+            tisaMat::matrix tmp_W(input,current_node);
+            //重み行列を読みだす
+            for (int W_row=0; W_row < input; W_row++){
+                file.read(reinterpret_cast<char*>(&tmp_row[0]),current_node * sizeof(double));
+                tmp_W.elements[W_row] = tmp_row;
+            }
+            net_layer[current_layer].W->elements = tmp_W.elements;
+
+            //tmp_rowを使いまわしてバイアスを読みだす
+            file.read(reinterpret_cast<char*>(&tmp_row[0]),current_node * sizeof(double));
+            net_layer[current_layer].B = tmp_row;
+        }
+
+        delete[] node;
+        delete[] Activation_f;
+    }
+
+    void Model::save_model(const char* filename) {
+        std::ofstream file(filename,std::ios::binary);
+        if (!file) {
+            printf("failed to open file : %s\n",filename);
+            exit(EXIT_FAILURE);
+        }
+        //INPUTのモードの層が入力層でないと読み込めないので、チェック
+        if (net_layer[0].Activation_f != INPUT) {
+            printf("first layer is not ""INPUT""\n");
+            exit(EXIT_FAILURE);
+        }
+
+        const char* Format_key = format_key;
+        file.write(Format_key, format_key_size);
+        int layer = number_of_layer();
+        file.write(reinterpret_cast<char*>(&layer),sizeof(int));
+        for (int current_layer = 0;current_layer < layer;current_layer++) {
+            int node = net_layer[current_layer].node;
+            file.write(reinterpret_cast<char*>(&node),sizeof(int));
+        }
+        for (int current_layer = 0; current_layer < layer; current_layer++) {
+            uint8_t Af = net_layer[current_layer].Activation_f;
+            file.write(reinterpret_cast<char*>(&Af), sizeof(uint8_t));
+        }
+        const char* Data_head = data_head;
+        file.write(Data_head, data_head_size);
+
+        //ここからモデルのパラメーターをファイルに書き込んでいく
+        for (int current_layer = 1; current_layer < layer; current_layer++) {
+            int W_row = net_layer[current_layer].W->mat_RC[0];
+            int node = net_layer[current_layer].W->mat_RC[1];
+            //重み行列を書き込む
+            for (int r = 0; r < W_row; r++) {
+                file.write(reinterpret_cast<char*>(&net_layer[current_layer].W->elements[r][0]),node * sizeof(double));
+            }
+            //バイアスを書き込む
+            file.write(reinterpret_cast<char*>(&net_layer[current_layer].B[0]), node * sizeof(double));
+        }
+
+        printf("The file was output successfully\n");
     }
 
     void Model::train(double learning_rate,Data_set& train_data, Data_set& test_data, int epoc, int iteration, uint8_t Error_func) {
