@@ -154,8 +154,8 @@ namespace tisaNET{
         for (int data_index = 0;data_index < sample_size;data_index++) {
             input_data(Input_data.elements[data_index]);
             for (int i = 1; i < number_of_layer(); i++) {
-                std::vector<double> X = *(tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W));
-                X = *(tisaMat::vector_add(X, net_layer[i].B));
+                std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
+                X = tisaMat::vector_add(X, net_layer[i].B);
                 for (int j = 0; j < X.size(); j++) {
                     net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
                 }
@@ -180,8 +180,8 @@ namespace tisaNET{
         for (int data_index = 0; data_index < sample_size; data_index++) {
             input_data(Input_data.elements[data_index]);
             for (int i = 1; i < layer_num; i++) {
-                std::vector<double> X = *(tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W));
-                X = *(tisaMat::vector_add(X, net_layer[i].B));
+                std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
+                X = tisaMat::vector_add(X, net_layer[i].B);
 
                 for (int j = 0; j < X.size(); j++) {
                     net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
@@ -208,16 +208,16 @@ namespace tisaNET{
 
         //初回限定で誤差をセットして学習率もかける
         tisaMat::matrix error_matrix(teacher);
-        error_matrix = *(tisaMat::matrix_subtract(output,error_matrix));
+        error_matrix = tisaMat::matrix_subtract(output,error_matrix);
         //printf("error_matrix for propagate\n");
         //error_matrix.show();
         error_matrix.multi_scalar(lr);
 
         if (error_func == CROSS_ENTROPY_ERROR) {
             tisaMat::matrix tmp_for_crossE(batch_size,output_num,1);
-            tmp_for_crossE = *(tisaMat::matrix_subtract(tmp_for_crossE,output));
-            tmp_for_crossE = *(tisaMat::Hadamard_product(tmp_for_crossE,output));
-            error_matrix = *(tisaMat::Hadamard_division(error_matrix,tmp_for_crossE));
+            tmp_for_crossE = tisaMat::matrix_subtract(tmp_for_crossE,output);
+            tmp_for_crossE = tisaMat::Hadamard_product(tmp_for_crossE,output);
+            error_matrix = tisaMat::Hadamard_division(error_matrix,tmp_for_crossE);
         }
 
         //重みとかの更新量を求める前にリフレッシュ
@@ -262,29 +262,29 @@ namespace tisaNET{
                     break;
                 }
                 //活性化関数の微分行列と秘伝のタレのアダマール積
-                propagate_matrix = *(tisaMat::Hadamard_product(dAf, propagate_matrix));
+                propagate_matrix = tisaMat::Hadamard_product(dAf, propagate_matrix);
 
                 //今の層の重み、バイアスの更新量を計算する
                     //重みは順伝播のときの入力も使う
-                tisaMat::matrix* W_tmp;
+                tisaMat::matrix W_tmp(0,0);
                 if((current_layer - 1) > 0){
                     W_tmp = tisaMat::vector_to_matrix(trainer[current_layer - 2].Y[batch_segment]);//current_layer-2のトレーナーは、前の層のトレーナー
-                    W_tmp = tisaMat::matrix_transpose(*W_tmp);
-                    W_tmp = tisaMat::matrix_multiply(*W_tmp, propagate_matrix);
+                    W_tmp = tisaMat::matrix_transpose(W_tmp);
+                    W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
                 }
                 else {
                     W_tmp = tisaMat::vector_to_matrix(input_batch.elements[batch_segment]);
-                    W_tmp = tisaMat::matrix_transpose(*W_tmp);
-                    W_tmp = tisaMat::matrix_multiply(*W_tmp, propagate_matrix);
+                    W_tmp = tisaMat::matrix_transpose(W_tmp);
+                    W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
                 }
                 
-                trainer[current_layer - 1].dW = tisaMat::matrix_add(*trainer[current_layer - 1].dW,*W_tmp);
+                *(trainer[current_layer - 1].dW) = tisaMat::matrix_add(*trainer[current_layer - 1].dW,W_tmp);
                     //バイアス
-                trainer[current_layer - 1].dB = *(tisaMat::vector_add(trainer[current_layer - 1].dB,propagate_matrix.elements[0]));
+                trainer[current_layer - 1].dB = tisaMat::vector_add(trainer[current_layer - 1].dB,propagate_matrix.elements[0]);
 
                 //今の層の重みの転置行列を秘伝のたれのうしろから行列積で次の層へ
                 W_tmp = tisaMat::matrix_transpose(*(net_layer[current_layer].W));
-                propagate_matrix = *(tisaMat::matrix_multiply(propagate_matrix, *W_tmp));
+                propagate_matrix = tisaMat::matrix_multiply(propagate_matrix, W_tmp);
             }
         }
 
@@ -513,11 +513,11 @@ namespace tisaNET{
                     //トレーナーの値を使って重みを調整する
                     for (int layer = 1; layer < net_layer.size(); layer++) {
                         //重み
-                        net_layer[layer].W = tisaMat::matrix_subtract(*net_layer[layer].W, *trainer[layer - 1].dW);
+                        *(net_layer[layer].W) = tisaMat::matrix_subtract(*net_layer[layer].W, *trainer[layer - 1].dW);
                         //printf("%d layer dW\n", layer);
                         //trainer[layer - 1].dW->show();
                         //バイアス
-                        net_layer[layer].B = *(tisaMat::vector_subtract(net_layer[layer].B, trainer[layer - 1].dB));
+                        net_layer[layer].B = tisaMat::vector_subtract(net_layer[layer].B, trainer[layer - 1].dB);
                         //printf("%d layer dB\n", layer);
                         //tisaMat::vector_show(trainer[layer - 1].dB);
                     }

@@ -48,187 +48,158 @@ namespace tisaMat {
 	}
 
 	//mat1とmat2を足す
-	matrix* matrix_add(matrix& mat1, matrix& mat2) {
-		matrix* tmp = new matrix(mat1.mat_RC[0], mat1.mat_RC[1]);
-		if (tmp == nullptr) {
-			std::cout << "preparation faile" << "\n";
+	matrix matrix_add(matrix& mat1, matrix& mat2) {
+		matrix tmp(mat1.mat_RC[0], mat1.mat_RC[1]);
+		if ((mat1.mat_RC[0] != mat2.mat_RC[0]) || (mat1.mat_RC[1] != mat2.mat_RC[1])) {
+			printf("matrix_shape are diffarent!\n");//行列の形が違うので足せない
+			return matrix(0, 0);
+		}
+		else {
+			for (int row = 0; row < mat1.mat_RC[0]; row++) {
+				for (int column = 0; column < mat1.mat_RC[1]; column++) {
+					tmp.elements[row][column] = mat1.elements[row][column] + mat2.elements[row][column];
+				}
+			}
 			return tmp;
 		}
-		else {
-			if ((mat1.mat_RC[0] != mat2.mat_RC[0]) || (mat1.mat_RC[1] != mat2.mat_RC[1])) {
-				return nullptr;//行列の形が違うので足せない
-			}
-			else {
-				for (int row = 0; row < mat1.mat_RC[0]; row++) {
-					for (int column = 0; column < mat1.mat_RC[1]; column++) {
-						tmp->elements[row][column] = mat1.elements[row][column] + mat2.elements[row][column];
-					}
-				}
-				return tmp;
-			}
-		}
 	}
+
 	//vec1とvec2を足す
-	std::vector<double>* vector_add(std::vector<double>& vec1, std::vector<double>& vec2) {
+	std::vector<double> vector_add(std::vector<double>& vec1, std::vector<double>& vec2) {
 		if (vec1.size() != vec2.size()) {
-			return nullptr;
+			return std::vector<double>();
 		}
 		else {
-			std::vector<double>* tmp = new std::vector<double>(vec1.size());
-			for (int i = 0; i < (*tmp).size(); i++) {
-				(*tmp)[i] = vec1[i] + vec2[i];
+			std::vector<double> tmp(vec1.size());
+			for (int i = 0; i < tmp.size(); i++) {
+				tmp[i] = vec1[i] + vec2[i];
 			}
 			return tmp;
 		}
 	}
 	//mat1からmat2を引く
-	matrix* matrix_subtract(matrix& mat1, matrix& mat2) {
-		matrix* tmp = new matrix(mat1.mat_RC[0], mat1.mat_RC[1]);
-		if (tmp == nullptr) {
-			std::cout << "preparation faile" << "\n";
-			return tmp;
+	matrix matrix_subtract(matrix& mat1, matrix& mat2) {
+		matrix tmp(mat1.mat_RC[0], mat1.mat_RC[1]);
+		if ((mat1.mat_RC[0] != mat2.mat_RC[0]) || (mat1.mat_RC[1] != mat2.mat_RC[1])) {
+			printf("matrix shape are diffarent!\n");//行列の形が違うので引けない
+			return matrix(0, 0);
 		}
 		else {
-			if ((mat1.mat_RC[0] != mat2.mat_RC[0]) || (mat1.mat_RC[1] != mat2.mat_RC[1])) {
-				return nullptr;//行列の形が違うので足せない
-			}
-			else {
-				for (int row = 0; row < mat1.mat_RC[0]; row++) {
-					for (int column = 0; column < mat1.mat_RC[1]; column++) {
-						tmp->elements[row][column] = mat1.elements[row][column] - mat2.elements[row][column];
-					}
+			for (int row = 0; row < mat1.mat_RC[0]; row++) {
+				for (int column = 0; column < mat1.mat_RC[1]; column++) {
+					tmp.elements[row][column] = mat1.elements[row][column] - mat2.elements[row][column];
 				}
-				return tmp;
 			}
+			return tmp;
 		}
 	}
+
 	//vec1とvec2を引く
-	std::vector<double>* vector_subtract(std::vector<double>& vec1, std::vector<double>& vec2) {
+	std::vector<double> vector_subtract(std::vector<double>& vec1, std::vector<double>& vec2) {
 		if (vec1.size() != vec2.size()) {
-			return nullptr;
+			return std::vector<double>();
 		}
 		else {
-			std::vector<double>* tmp = new std::vector<double>(vec1.size());
-			for (int i = 0; i < (*tmp).size(); i++) {
-				(*tmp)[i] = vec1[i] - vec2[i];
+			std::vector<double> tmp(vec1.size());
+			for (int i = 0; i < tmp.size(); i++) {
+				tmp[i] = vec1[i] - vec2[i];
 			}
 			return tmp;
 		}
 	}
+
 	//mat1とmat2を掛ける（行列の積）
-	matrix* matrix_multiply(matrix& mat1, matrix& mat2) {
+	matrix matrix_multiply(matrix& mat1, matrix& mat2) {
 		if ((mat1.mat_RC[1] != mat2.mat_RC[0]) && ((mat1.mat_RC[0] != mat2.mat_RC[1]))) {
-			return nullptr;
+			printf("can not multiply matrix!\n");
+			return matrix(0,0);
 		}
 		else {
-			matrix* tmp = new matrix(mat1.mat_RC[0], mat2.mat_RC[1]);
-			if (tmp == nullptr) {
-				return tmp;
-			}
-			else {
-				for (int row = 0; row < (tmp->mat_RC[0]); row++) {
-					for (int column = 0; column < (tmp->mat_RC[1]); column++) {
-						double element = 0;
-						for (int i = 0; i < (mat2.mat_RC[0]); i++) {
-							element += mat1.elements[row][i] * mat2.elements[i][column];
-						}
-						tmp->elements[row][column] = element;
+			matrix tmp(mat1.mat_RC[0], mat2.mat_RC[1]);
+			for (int row = 0; row < (tmp.mat_RC[0]); row++) {
+				for (int column = 0; column < (tmp.mat_RC[1]); column++) {
+					double element = 0;
+					for (int i = 0; i < (mat2.mat_RC[0]); i++) {
+						element += mat1.elements[row][i] * mat2.elements[i][column];
 					}
+					tmp.elements[row][column] = element;
 				}
-				return tmp;
 			}
+			return tmp;
 		}
 	}
 
 	//mat1とmat2のアダマール積
-	matrix* Hadamard_product(matrix& mat1, matrix& mat2) {
+	matrix Hadamard_product(matrix& mat1, matrix& mat2) {
 		if ((mat1.mat_RC[0] != mat2.mat_RC[0]) || ((mat1.mat_RC[1] != mat2.mat_RC[1]))) {
-			return nullptr;
+			printf("matrix shape are different!\n");
+			return matrix(0,0);
 		}
 		else {
-			matrix* tmp = new matrix(mat1.mat_RC[0], mat2.mat_RC[1]);
-			if (tmp == nullptr) {
-				return tmp;
-			}
-			else {
-				for (int row = 0; row < (tmp->mat_RC[0]); row++) {
-					for (int column = 0; column < (tmp->mat_RC[1]); column++) {
-						tmp->elements[row][column] = mat1.elements[row][column] * mat2.elements[row][column];
-					}
+			matrix tmp(mat1.mat_RC[0], mat2.mat_RC[1]);
+			for (int row = 0; row < (tmp.mat_RC[0]); row++) {
+				for (int column = 0; column < (tmp.mat_RC[1]); column++) {
+					tmp.elements[row][column] = mat1.elements[row][column] * mat2.elements[row][column];
 				}
-				return tmp;
 			}
+			return tmp;
 		}
 	}
 
 	//mat1とmat2のアダマール除算
-	matrix* Hadamard_division(matrix& mat1, matrix& mat2) {
+	matrix Hadamard_division(matrix& mat1, matrix& mat2) {
 		if ((mat1.mat_RC[0] != mat2.mat_RC[0]) || ((mat1.mat_RC[1] != mat2.mat_RC[1]))) {
-			return nullptr;
+			printf("matrix shape are different!\n");
+			return matrix(0, 0);
 		}
 		else {
-			matrix* tmp = new matrix(mat1.mat_RC[0], mat2.mat_RC[1]);
-			if (tmp == nullptr) {
-				return tmp;
-			}
-			else {
-				for (int row = 0; row < (tmp->mat_RC[0]); row++) {
-					for (int column = 0; column < (tmp->mat_RC[1]); column++) {
-						tmp->elements[row][column] = mat1.elements[row][column] / mat2.elements[row][column];
-					}
+			matrix tmp(mat1.mat_RC[0], mat2.mat_RC[1]);
+			for (int row = 0; row < (tmp.mat_RC[0]); row++) {
+				for (int column = 0; column < (tmp.mat_RC[1]); column++) {
+					tmp.elements[row][column] = mat1.elements[row][column] / mat2.elements[row][column];
 				}
-				return tmp;
 			}
+			return tmp;
 		}
 	}
 
 	//vec1とmat1を掛ける
-	std::vector<double>* vector_multiply(std::vector<double> vec1, matrix& mat1) {
+	std::vector<double> vector_multiply(std::vector<double> vec1, matrix& mat1) {
 		if (mat1.mat_RC[0] != vec1.size()) {
 			printf("|!|can't multiply the vector and the matrix|!|\n");
-			return nullptr;
+			return std::vector<double>();
 		}
 		else {
-			std::vector<double>* tmp = new std::vector<double>(mat1.mat_RC[1]);
+			std::vector<double> tmp(mat1.mat_RC[1]);
 			for (int column = 0; column < mat1.mat_RC[1]; column++) {
 				double element = 0;
 				for (int i = 0; i < (mat1.mat_RC[0]); i++) {
 					element += vec1[i] * mat1.elements[i][column];
 				}
-				(*tmp)[column] = element;
+				tmp[column] = element;
 			}
 			return tmp;
 		}
 	}
 
 	//matを転置する
-	matrix* matrix_transpose(matrix& const mat) {
-		matrix* tmp = new matrix(mat.mat_RC[1], mat.mat_RC[0]);
-		if (tmp == nullptr) {
-			return tmp;
-		}
-		else {
-			for (int row = 0; row < (tmp->mat_RC[0]); row++) {
-				for (int column = 0; column < (tmp->mat_RC[1]); column++) {
-					tmp->elements[row][column] = mat.elements[column][row];
-				}
+	matrix matrix_transpose(matrix& mat) {
+		matrix tmp(mat.mat_RC[1], mat.mat_RC[0]);
+		for (int row = 0; row < (tmp.mat_RC[0]); row++) {
+			for (int column = 0; column < (tmp.mat_RC[1]); column++) {
+				tmp.elements[row][column] = mat.elements[column][row];
 			}
-			return tmp;
 		}
+		return tmp;
 	}
 
 	//vecを1行の行列にする
-	matrix* vector_to_matrix(std::vector<double>& vec) {
-		matrix* tmp = new matrix(1, vec.size());
-		if (tmp == nullptr) {
-			return tmp;
+	matrix vector_to_matrix(std::vector<double>& vec) {
+		matrix tmp(1, vec.size());
+		for (int column = 0; column < (tmp.mat_RC[1]); column++) {
+			tmp.elements[0][column] = vec[column];
 		}
-		else {
-			for (int column = 0; column < (tmp->mat_RC[1]); column++) {
-				tmp->elements[0][column] = vec[column];
-			}
-			return tmp;
-		}
+		return tmp;
 	}
 
 	//vecをスカラー倍する

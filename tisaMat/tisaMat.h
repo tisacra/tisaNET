@@ -31,34 +31,34 @@ namespace tisaMat {
 		}
 	};
 	//mat1とmat2を足す
-	matrix* matrix_add(matrix& mat1, matrix& mat2);
+	matrix matrix_add(matrix& mat1, matrix& mat2);
 
 	//vec1とvec2を足す
-	std::vector<double>* vector_add(std::vector<double>& vec1, std::vector<double>& vec2);
+	std::vector<double> vector_add(std::vector<double>& vec1, std::vector<double>& vec2);
 
 	//mat1からmat2を引く
-	matrix* matrix_subtract(tisaMat::matrix& mat1, tisaMat::matrix& mat2);
+	matrix matrix_subtract(tisaMat::matrix& mat1, tisaMat::matrix& mat2);
 
 	//vec1とvec2を引く
-	std::vector<double>* vector_subtract(std::vector<double>& vec1, std::vector<double>& vec2);
+	std::vector<double> vector_subtract(std::vector<double>& vec1, std::vector<double>& vec2);
 
 	//mat1とmat2を掛ける（行列の積）
-	matrix* matrix_multiply(matrix& mat1, matrix& mat2);
+	matrix matrix_multiply(matrix& mat1, matrix& mat2);
 
 	//mat1とmat2のアダマール積
-	matrix* Hadamard_product(matrix& mat1, matrix& mat2);
+	matrix Hadamard_product(matrix& mat1, matrix& mat2);
 
 	//mat1とmat2のアダマール除算
-	matrix* Hadamard_division(matrix& mat1, matrix& mat2);
+	matrix Hadamard_division(matrix& mat1, matrix& mat2);
 
 	//vec1とmat1を掛ける
-	std::vector<double>* vector_multiply(std::vector<double> vec1,matrix& mat1);
+	std::vector<double> vector_multiply(std::vector<double> vec1,matrix& mat1);
 
 	//matを転置する
-	matrix* matrix_transpose(matrix& mat);
+	matrix matrix_transpose(matrix& mat);
 
 	//vecを1行の行列にする
-	matrix* vector_to_matrix(std::vector<double>& vec);
+	matrix vector_to_matrix(std::vector<double>& vec);
 
 	//vecをスカラー倍する
 	void vector_multiscalar(std::vector<double>& vec, double scalar);
