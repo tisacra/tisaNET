@@ -141,7 +141,7 @@ namespace tisaMat {
 	}
 
 	//mat1とmat2のアダマール積
-	matrix* matrix_Hadamard(matrix& mat1, matrix& mat2) {
+	matrix* Hadamard_product(matrix& mat1, matrix& mat2) {
 		if ((mat1.mat_RC[0] != mat2.mat_RC[0]) || ((mat1.mat_RC[1] != mat2.mat_RC[1]))) {
 			return nullptr;
 		}
@@ -154,6 +154,27 @@ namespace tisaMat {
 				for (int row = 0; row < (tmp->mat_RC[0]); row++) {
 					for (int column = 0; column < (tmp->mat_RC[1]); column++) {
 						tmp->elements[row][column] = mat1.elements[row][column] * mat2.elements[row][column];
+					}
+				}
+				return tmp;
+			}
+		}
+	}
+
+	//mat1とmat2のアダマール除算
+	matrix* Hadamard_division(matrix& mat1, matrix& mat2) {
+		if ((mat1.mat_RC[0] != mat2.mat_RC[0]) || ((mat1.mat_RC[1] != mat2.mat_RC[1]))) {
+			return nullptr;
+		}
+		else {
+			matrix* tmp = new matrix(mat1.mat_RC[0], mat2.mat_RC[1]);
+			if (tmp == nullptr) {
+				return tmp;
+			}
+			else {
+				for (int row = 0; row < (tmp->mat_RC[0]); row++) {
+					for (int column = 0; column < (tmp->mat_RC[1]); column++) {
+						tmp->elements[row][column] = mat1.elements[row][column] / mat2.elements[row][column];
 					}
 				}
 				return tmp;

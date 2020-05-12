@@ -46,7 +46,10 @@ namespace tisaMat {
 	matrix* matrix_multiply(matrix& mat1, matrix& mat2);
 
 	//mat1とmat2のアダマール積
-	matrix* matrix_Hadamard(matrix& mat1, matrix& mat2);
+	matrix* Hadamard_product(matrix& mat1, matrix& mat2);
+
+	//mat1とmat2のアダマール除算
+	matrix* Hadamard_division(matrix& mat1, matrix& mat2);
 
 	//vec1とmat1を掛ける
 	std::vector<double>* vector_multiply(std::vector<double> vec1,matrix& mat1);

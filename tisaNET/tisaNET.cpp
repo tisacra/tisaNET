@@ -4,8 +4,11 @@
 #include <stdio.h>
 #include <fstream>
 
-#define format_key "tisaNET"
-#define data_head "DATA"
+#define format_key {'t','i','s','a','N','E','T'}
+#define f_k_size 7
+
+#define data_head {'D','A','T','A'}
+#define d_size 4
 
 #define format_key_size sizeof(char) * 7
 #define data_head_size sizeof(char) * 4
@@ -13,30 +16,35 @@
 
 namespace tisaNET{
 
-    double step(double a) {
+    double step(double X) {
         double Y;
-        if (a == 0.0) {
+        if (X == 0.0) {
             Y = 0;
         }
         else {
-            Y = (a / fabs(a) + 1) / 2;
+            Y = (X / fabs(X) + 1) / 2;
         }
         return Y;
     }
 
-    double sigmoid(double a) {
+    double sigmoid(double X) {
         double Y;
-        Y = 1 / (1 + exp(-1 * a));
+        Y = 1 / (1 + exp(-1 * X));
         return Y;
     }
 
-    double ReLU(double a) {
-        if (a > 0) {
-            return a;
+    double ReLU(double X) {
+        if (X > 0) {
+            return X;
         }
         else {
             return 0;
         }
+    }
+
+    //SOFTMAXが呼ばれたとき専用のあくまでも部品
+    double softmax(double X) {
+        return exp(X);
     }
 
     //おまけ
@@ -77,10 +85,19 @@ namespace tisaNET{
         }
         return tmp;
     }
-    //stub
-    std::vector<double> cross_entropy(std::vector<std::vector<double>>& teacher, std::vector<std::vector<double>>& output) {
+    
+    std::vector<double> cross_entropy_error(std::vector<std::vector<double>>& teacher, std::vector<std::vector<double>>& output) {
         int sample_size = output.size();
-        std::vector<double> tmp(output[0].size(), 0);
+        int output_num = output[0].size();
+        std::vector<double> tmp(1, 0);
+
+        //log()が-∞にならないように、せめて0より大きくなるようちいちゃい数を足す
+        double delta = 1e-7;
+        for (int i = 0; i < sample_size; i++) {
+            for (int j = 0; j < output_num; j++) {
+                tmp[0] -= teacher[i][j] * log(output[i][j] + delta) + (1.0 - teacher[i][j]) * log(1 - output[i][j] + delta);
+            }
+        }
         return tmp;
     }
 
@@ -142,6 +159,14 @@ namespace tisaNET{
                 for (int j = 0; j < X.size(); j++) {
                     net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
                 }
+
+                if (net_layer[i].Activation_f == SOFTMAX) {
+                    double sigma = 0.0;
+                    for (int node = 0; node < net_layer[i].Output.size(); node++) {
+                        sigma += net_layer[i].Output[node];
+                    }
+                    tisaMat::vector_multiscalar(net_layer[i].Output,1.0 / sigma);
+                }
             }
             output_matrix.elements[data_index] = net_layer.back().Output;
         }
@@ -151,16 +176,26 @@ namespace tisaNET{
     tisaMat::matrix Model::F_propagate(tisaMat::matrix& Input_data,std::vector<Trainer>& trainer) {
         int sample_size = Input_data.mat_RC[0];
         tisaMat::matrix output_matrix(sample_size, net_layer.back().Output.size());
+        int layer_num = number_of_layer();
         for (int data_index = 0; data_index < sample_size; data_index++) {
             input_data(Input_data.elements[data_index]);
-            for (int i = 1; i < number_of_layer(); i++) {
+            for (int i = 1; i < layer_num; i++) {
                 std::vector<double> X = *(tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W));
                 X = *(tisaMat::vector_add(X, net_layer[i].B));
+
                 for (int j = 0; j < X.size(); j++) {
                     net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
-
-                    trainer[i - 1].Y[data_index] = net_layer[i].Output;
                 }
+
+                if (net_layer[i].Activation_f == SOFTMAX) {
+                    double sigma = 0.0;
+                    for (int node = 0; node < net_layer[i].Output.size(); node++) {
+                        sigma += net_layer[i].Output[node];
+                    }
+                    tisaMat::vector_multiscalar(net_layer[i].Output, 1.0 / sigma);
+                }
+
+                trainer[i - 1].Y[data_index] = net_layer[i].Output;
             }
             output_matrix.elements[data_index] = net_layer.back().Output;
         }
@@ -177,6 +212,13 @@ namespace tisaNET{
         //printf("error_matrix for propagate\n");
         //error_matrix.show();
         error_matrix.multi_scalar(lr);
+
+        if (error_func == CROSS_ENTROPY_ERROR) {
+            tisaMat::matrix tmp_for_crossE(batch_size,output_num,1);
+            tmp_for_crossE = *(tisaMat::matrix_subtract(tmp_for_crossE,output));
+            tmp_for_crossE = *(tisaMat::Hadamard_product(tmp_for_crossE,output));
+            error_matrix = *(tisaMat::Hadamard_division(error_matrix,tmp_for_crossE));
+        }
 
         //重みとかの更新量を求める前にリフレッシュ
         for (int current_layer = 0; current_layer < net_layer.size() - 1;current_layer++) {
@@ -202,6 +244,12 @@ namespace tisaNET{
                         dAf.elements[0][i] = Y * (1 - Y);
                     }
                     break;
+                case SOFTMAX:
+                    for (int i = 0; i < net_layer[current_layer].node; i++) {
+                        double Y = trainer[current_layer - 1].Y[batch_segment][i];
+                        dAf.elements[0][i] = Y * (1 - Y);
+                    }
+                    break;
                 case RELU:
                     for (int i = 0; i < net_layer[current_layer].node; i++) {
                         dAf.elements[0][i] = 1;
@@ -214,7 +262,7 @@ namespace tisaNET{
                     break;
                 }
                 //活性化関数の微分行列と秘伝のタレのアダマール積
-                propagate_matrix = *(tisaMat::matrix_Hadamard(dAf, propagate_matrix));
+                propagate_matrix = *(tisaMat::Hadamard_product(dAf, propagate_matrix));
 
                 //今の層の重み、バイアスの更新量を計算する
                     //重みは順伝播のときの入力も使う
@@ -296,7 +344,7 @@ namespace tisaNET{
         }
 
         char file_check[7];
-        const char* format_checker = format_key;
+        const char format_checker[f_k_size] = format_key;
         file.read(file_check, format_key_size);
         for (int i = 0; i < 7; i++) {
             if (file_check[i] != format_checker[i]) {
@@ -312,7 +360,7 @@ namespace tisaNET{
         file.read(reinterpret_cast<char*>(node),layer * sizeof(int));
         file.read(reinterpret_cast<char*>(Activation_f),layer * sizeof(uint8_t));
 
-        const char* Data_head = data_head;
+        const char Data_head[d_size] = data_head;
         file.read(file_check, data_head_size);
         for (int i = 0; i < 4; i++) {
             if (file_check[i] != Data_head[i]) {
@@ -362,7 +410,7 @@ namespace tisaNET{
             exit(EXIT_FAILURE);
         }
 
-        const char* Format_key = format_key;
+        const char Format_key[f_k_size] = format_key;
         file.write(Format_key, format_key_size);
         int layer = number_of_layer();
         file.write(reinterpret_cast<char*>(&layer),sizeof(int));
@@ -374,7 +422,7 @@ namespace tisaNET{
             uint8_t Af = net_layer[current_layer].Activation_f;
             file.write(reinterpret_cast<char*>(&Af), sizeof(uint8_t));
         }
-        const char* Data_head = data_head;
+        const char Data_head[d_size] = data_head;
         file.write(Data_head, data_head_size);
 
         //ここからモデルのパラメーターをファイルに書き込んでいく
@@ -389,7 +437,7 @@ namespace tisaNET{
             file.write(reinterpret_cast<char*>(&net_layer[current_layer].B[0]), node * sizeof(double));
         }
 
-        printf("The file was output successfully : %s\n",filename);
+        printf("  :)  The file was output successfully!!! : %s\n",filename);
     }
 
     void Model::train(double learning_rate,Data_set& train_data, Data_set& test_data, int epoc, int iteration, uint8_t Error_func) {
@@ -493,7 +541,7 @@ namespace tisaNET{
             //printf("test_input\n");
             //test_mat.show();
             //printf("test_output\n");
-            //output_iterate.show();
+            output_iterate.show();
             error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
             printf("Error : ");
             tisaMat::vector_show(error);

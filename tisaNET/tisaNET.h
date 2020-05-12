@@ -16,10 +16,11 @@
 #define SIGMOID 0
 #define RELU 1
 #define STEP 2
-#define INPUT 3
+#define SOFTMAX 3
+#define INPUT 4
 
 #define MEAN_SQUARED_ERROR 0
-#define CROSS_ENTROPY 1
+#define CROSS_ENTROPY_ERROR 1
 
 namespace tisaNET {
 
@@ -45,6 +46,7 @@ namespace tisaNET {
 	double step(double X);
 	double sigmoid(double X);
 	double ReLU(double X);
+	double softmax(double X);
 
 	//数値をバイナリで表示
 	bool print01(int bit, long Value);
@@ -53,7 +55,7 @@ namespace tisaNET {
 	std::vector<double> mean_squared_error(std::vector<std::vector<double>>&, std::vector<std::vector<double>>& output);
 
 	//交差エントロピー関数
-	std::vector<double> cross_entropy(std::vector<std::vector<double>>&, std::vector<std::vector<double>>& output);
+	std::vector<double> cross_entropy_error(std::vector<std::vector<double>>&, std::vector<std::vector<double>>& output);
 
 	class Model {
 	public:
@@ -89,7 +91,7 @@ namespace tisaNET {
 
 	private:
 		std::vector<layer> net_layer;
-		std::vector<double> (*Ef[2])(std::vector<std::vector<double>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy };
-		double (*Af[3])(double) = { sigmoid,ReLU,step };
+		std::vector<double> (*Ef[2])(std::vector<std::vector<double>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
+		double (*Af[4])(double) = { sigmoid,ReLU,step,softmax };
 	};
 }
