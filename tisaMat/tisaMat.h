@@ -16,6 +16,19 @@ namespace tisaMat {
 
 		//２次元配列から行列を作る([行][列]という形になる)
 		matrix(std::vector<std::vector<double>> mat);
+		//型がdouble以外の時
+		template <typename T>
+		matrix(std::vector<std::vector<T>> mat) {
+			int R = mat.size(), C = mat[0].size();
+			mat_RC[0] = R;
+			mat_RC[1] = C;
+			elements = std::vector<std::vector<double>>(R, std::vector<double>(C));
+			for (int row = 0; row < R;row++) {
+				for (int column = 0; column < C;column++) {
+					elements[row][column] = (double)mat[row][column];
+				}
+			}
+		}
 
 		//行列を表示する
 		void show();
@@ -65,4 +78,15 @@ namespace tisaMat {
 
 	//vecを表示する
 	void vector_show(std::vector<double>& vec);
+
+	//vecを型変換する
+	template <typename T,typename U>
+	std::vector<T> vector_cast(std::vector<U>& vec) {
+		int size = vec.size();
+		std::vector<T> tmp(size);
+		for (int i = 0; i < size;i++) {
+			tmp[i] = (T)vec[i];
+		}
+		return tmp;
+	}
 }

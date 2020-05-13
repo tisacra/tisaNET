@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <fstream>
+#include <string>
 
 #define format_key {'t','i','s','a','N','E','T'}
 #define f_k_size 7
@@ -13,8 +14,121 @@
 #define format_key_size sizeof(char) * 7
 #define data_head_size sizeof(char) * 4
 
+#define mnist_pict_offset 16
+#define mnist_lab_offset 8
+
+#define mnist_image_size 784
+
+#define mnist_train_d "train-images.idx3-ubyte"
+#define mnist_train_l "train-labels.idx1-ubyte"
+#define mnist_test_d "t10k-images.idx3-ubyte"
+#define mnist_test_l "t10k-labels.idx1-ubyte"
 
 namespace tisaNET{
+    //MNISTからデータを作る
+    bool load_MNIST(const char* path, Data_set& train_data, Data_set& test_data, int sample_size,int test_size, bool single_output) {
+        std::random_device seed_gen;
+        std::default_random_engine rand_gen(seed_gen());
+        std::string folder = path;
+
+        unsigned int train_data_start = rand_gen() % 60000;
+        unsigned int test_data_start = rand_gen() % 10000;
+        //ここから訓練のデータ
+        {
+            std::string filename = folder + "\\" + mnist_train_d;
+            std::ifstream file_d(filename);
+            if (!file_d) {
+                printf("Can not open file : %s\n", filename);
+                exit(EXIT_FAILURE);
+            }
+            filename = folder + "\\" + mnist_train_l;
+            std::ifstream file_l(filename);
+            if (!file_l) {
+                printf("Can not open file : %s\n", filename);
+                exit(EXIT_FAILURE);
+            }
+
+            file_d.seekg(mnist_pict_offset + (long)(train_data_start * mnist_image_size));
+            file_l.seekg(mnist_lab_offset + (long)train_data_start);
+
+            std::vector<uint8_t> tmp_d(mnist_image_size);
+            
+            uint8_t tmp_for_l;
+            for (int i = 0,index=train_data_start;i < sample_size;i++,index++) {
+                std::vector<uint8_t> tmp_l;
+                if (index >= 60000) {
+                    file_d.seekg(mnist_pict_offset);
+                    
+                }
+                file_d.read(reinterpret_cast<char*>(&tmp_d[0]), mnist_image_size);
+                train_data.data.push_back(tmp_d);
+                file_l.read(reinterpret_cast<char*>(&tmp_for_l), sizeof(uint8_t));
+                if (single_output) {
+                    tmp_l.push_back(tmp_for_l);
+                }
+                else {
+                    for (int bit = 0; bit < 10;bit++) {
+                        if (bit == tmp_for_l) {
+                            tmp_l.push_back(1);
+                        }
+                        else {
+                            tmp_l.push_back(0);
+                        }
+                    }
+                }
+                train_data.answer.push_back(tmp_l);
+            }
+        }
+
+        //ここから評価のデータ
+        {
+            std::string filename = folder + "\\" + mnist_test_d;
+            std::ifstream file_d(filename);
+            if (!file_d) {
+                printf("Can not open file : %s\n", filename);
+                exit(EXIT_FAILURE);
+            }
+            filename = folder + "\\" + mnist_test_l;
+            std::ifstream file_l(filename);
+            if (!file_l) {
+                printf("Can not open file : %s\n", filename);
+                exit(EXIT_FAILURE);
+            }
+
+            file_d.seekg(mnist_pict_offset + (long)(test_data_start * mnist_image_size));
+            file_l.seekg(mnist_lab_offset + (long)test_data_start);
+
+            std::vector<uint8_t> tmp_d(mnist_image_size);
+            
+            uint8_t tmp_for_l;
+            for (int i = 0, index = test_data_start; i < test_size; i++, index++) {
+                std::vector<uint8_t> tmp_l;
+                if (index >= 60000) {
+                    file_d.seekg(mnist_pict_offset);
+
+                }
+                file_d.read(reinterpret_cast<char*>(&tmp_d[0]), mnist_image_size);
+                test_data.data.push_back(tmp_d);
+                file_l.read(reinterpret_cast<char*>(&tmp_for_l), sizeof(uint8_t));
+                if (single_output) {
+                    tmp_l.push_back(tmp_for_l);
+                }
+                else {
+                    for (int bit = 0; bit < 10; bit++) {
+                        if (bit == tmp_for_l) {
+                            tmp_l.push_back(1);
+                        }
+                        else {
+                            tmp_l.push_back(0);
+                        }
+                    }
+                }
+                test_data.answer.push_back(tmp_l);
+            }
+        }
+
+        printf("  :>  loaded MNIST successfully\n");
+    }
 
     double step(double X) {
         double Y;
@@ -72,7 +186,7 @@ namespace tisaNET{
         return true;
     }
 
-    std::vector<double> mean_squared_error(std::vector<std::vector<double>>& teacher, std::vector<std::vector<double>>& output) {
+    std::vector<double> mean_squared_error(std::vector<std::vector<uint8_t>>& teacher, std::vector<std::vector<double>>& output) {
         int sample_size = output.size();
         std::vector<double> tmp(output[0].size(),0);
         for (int i = 0;i < sample_size;i++) {
@@ -86,7 +200,7 @@ namespace tisaNET{
         return tmp;
     }
     
-    std::vector<double> cross_entropy_error(std::vector<std::vector<double>>& teacher, std::vector<std::vector<double>>& output) {
+    std::vector<double> cross_entropy_error(std::vector<std::vector<uint8_t>>& teacher, std::vector<std::vector<double>>& output) {
         int sample_size = output.size();
         int output_num = output[0].size();
         std::vector<double> tmp(1, 0);
@@ -202,7 +316,7 @@ namespace tisaNET{
         return output_matrix;
     }
 
-    void Model::B_propagate(std::vector<std::vector<double>>& teacher, tisaMat::matrix& output,uint8_t error_func, std::vector<Trainer>& trainer,double lr,tisaMat::matrix& input_batch) {
+    void Model::B_propagate(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output,uint8_t error_func, std::vector<Trainer>& trainer,double lr,tisaMat::matrix& input_batch) {
         int output_num = output.mat_RC[1];
         int batch_size = output.mat_RC[0];
 
@@ -305,7 +419,7 @@ namespace tisaNET{
 
     void Model::initialize() {
         std::random_device seed_gen;
-        std::default_random_engine rand_gen;
+        std::default_random_engine rand_gen(seed_gen());
         std::normal_distribution<> dist;
 
         //0番の層は入力の分配にしかつかわないので１番の層から
@@ -457,7 +571,7 @@ namespace tisaNET{
         tisaMat::matrix answer_iterate(batch_size, output_num);
         std::vector<double> error(output_num);
         tisaMat::matrix test_mat(test_data.data);
-        std::vector<std::vector<double>> teach_iterate(batch_size);
+        std::vector<std::vector<uint8_t>> teach_iterate(batch_size);
 
         //バックプロパゲーションの時に重みの更新量を記憶するトレーナーをつくる
         std::vector<Trainer> trainer;
@@ -479,7 +593,7 @@ namespace tisaNET{
 
                 //次のイテレーションでつかう入力の行列をつくる
                 for (int j = 0; j < batch_size; j++) {
-                    input_iterate.elements[j] = train_data.data[(batch_size * i) + j];
+                    input_iterate.elements[j] = tisaMat::vector_cast<double>(train_data.data[(batch_size * i) + j]);
                     teach_iterate[j] = train_data.answer[(batch_size * i) + j];
                 }
                 printf("| epoc : %6d |",ep);

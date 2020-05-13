@@ -23,15 +23,15 @@
 #define CROSS_ENTROPY_ERROR 1
 
 namespace tisaNET {
-
-	struct Data_set {
-		std::vector<std::vector<double>> data;
-		std::vector<std::vector<double>> answer;
+	class Data_set {
+	public:
+		std::vector<std::vector<uint8_t>> data;
+		std::vector<std::vector<uint8_t>> answer;
 	};
 
 	struct layer {
 		uint8_t Activation_f = 0;
-		uint8_t node = 0;
+		unsigned short node = 0;
 		tisaMat::matrix *W = nullptr;
 		std::vector<double> B;
 		std::vector<double> Output;
@@ -43,6 +43,9 @@ namespace tisaNET {
 		std::vector<std::vector<double>> Y;
 	};
 
+	//MNISTからデータを作る
+	bool load_MNIST(const char* path,Data_set& train_data,Data_set& test_data, int sample_size,int test_size, bool single_output);
+
 	double step(double X);
 	double sigmoid(double X);
 	double ReLU(double X);
@@ -52,10 +55,10 @@ namespace tisaNET {
 	bool print01(int bit, long Value);
 	
 	//平均二乗誤差関数
-	std::vector<double> mean_squared_error(std::vector<std::vector<double>>&, std::vector<std::vector<double>>& output);
+	std::vector<double> mean_squared_error(std::vector<std::vector<uint8_t>>& teacher, std::vector<std::vector<double>>& output);
 
 	//交差エントロピー関数
-	std::vector<double> cross_entropy_error(std::vector<std::vector<double>>&, std::vector<std::vector<double>>& output);
+	std::vector<double> cross_entropy_error(std::vector<std::vector<uint8_t>>& teacher, std::vector<std::vector<double>>& output);
 
 	class Model {
 	public:
@@ -72,7 +75,7 @@ namespace tisaNET {
 		tisaMat::matrix F_propagate(tisaMat::matrix& Input_data, std::vector<Trainer>& trainer);
 
 		//逆誤差伝播する
-		void B_propagate(std::vector<std::vector<double>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer,double lr, tisaMat::matrix& input_batch);
+		void B_propagate(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer,double lr, tisaMat::matrix& input_batch);
 
 		//ネットワークの層の数を取り出す
 		int number_of_layer();
@@ -91,7 +94,7 @@ namespace tisaNET {
 
 	private:
 		std::vector<layer> net_layer;
-		std::vector<double> (*Ef[2])(std::vector<std::vector<double>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
+		std::vector<double> (*Ef[2])(std::vector<std::vector<uint8_t>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
 		double (*Af[4])(double) = { sigmoid,ReLU,step,softmax };
 	};
 }
