@@ -96,7 +96,7 @@ namespace tisaNET{
             }
 
             file_d.seekg(mnist_pict_offset + (long)(test_data_start * mnist_image_size));
-            file_l.seekg(mnist_lab_offset + (long)test_data_start);
+            file_l.seekg((long)mnist_lab_offset + (long)test_data_start);
 
             std::vector<uint8_t> tmp_d(mnist_image_size);
             
@@ -299,6 +299,9 @@ namespace tisaNET{
 
                 for (int j = 0; j < X.size(); j++) {
                     net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
+                    if (isnan(net_layer[i].Output[j])) {
+                        bool nan_flug = 1;
+                    }
                 }
 
                 if (net_layer[i].Activation_f == SOFTMAX) {
@@ -331,7 +334,7 @@ namespace tisaNET{
             tisaMat::matrix tmp_for_crossE(batch_size,output_num,1);
             tmp_for_crossE = tisaMat::matrix_subtract(tmp_for_crossE,output);
             tmp_for_crossE = tisaMat::Hadamard_product(tmp_for_crossE,output);
-            error_matrix = tisaMat::Hadamard_division(error_matrix,tmp_for_crossE);
+            error_matrix = tisaMat::Hadamard_division(error_matrix,tmp_for_crossE);//誤差がすごいことになってる
         }
 
         //重みとかの更新量を求める前にリフレッシュ
@@ -610,7 +613,7 @@ namespace tisaNET{
                 //answer_matrix.show();
                 
                 
-                error = (*Ef[Error_func])(teach_iterate, output_iterate.elements);
+                error = (*Ef[Error_func])(teach_iterate, output_iterate.elements);//ここではじめて？nan
                 printf("Error   :  ");
                 tisaMat::vector_show(error);
 
