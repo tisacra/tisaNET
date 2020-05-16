@@ -92,9 +92,14 @@ namespace tisaNET {
 		//モデルをファイルに出力する
 		void save_model(const char* tp_file);
 
+		//正答率を表示/非表示にする
+		void monitor_accuracy(bool monitor_accuracy);
+
 	private:
+		bool monitoring_accuracy = false;
 		std::vector<layer> net_layer;
 		std::vector<double> (*Ef[2])(std::vector<std::vector<uint8_t>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
 		double (*Af[4])(double) = { sigmoid,ReLU,step,softmax };
+		void m_a(std::vector<std::vector<double>>& output, std::vector<std::vector<uint8_t>>& answer, uint8_t error_func);
 	};
 }

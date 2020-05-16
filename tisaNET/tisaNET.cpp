@@ -24,6 +24,8 @@
 #define mnist_test_d "t10k-images.idx3-ubyte"
 #define mnist_test_l "t10k-labels.idx1-ubyte"
 
+#define judge 0.05
+
 namespace tisaNET{
     //MNISTからデータを作る
     bool load_MNIST(const char* path, Data_set& train_data, Data_set& test_data, int sample_size,int test_size, bool single_output) {
@@ -212,6 +214,9 @@ namespace tisaNET{
                 tmp[0] -= teacher[i][j] * log(output[i][j] + delta) + (1.0 - teacher[i][j]) * log(1 - output[i][j] + delta);
             }
         }
+        
+        tmp[0] /= sample_size;
+
         return tmp;
     }
 
@@ -331,10 +336,15 @@ namespace tisaNET{
         error_matrix.multi_scalar(lr);
 
         if (error_func == CROSS_ENTROPY_ERROR) {
-            tisaMat::matrix tmp_for_crossE(batch_size,output_num,1);
+            tisaMat::matrix tmp_for_crossE(batch_size,output_num,1.0);
             tmp_for_crossE = tisaMat::matrix_subtract(tmp_for_crossE,output);
             tmp_for_crossE = tisaMat::Hadamard_product(tmp_for_crossE,output);
-            error_matrix = tisaMat::Hadamard_division(error_matrix,tmp_for_crossE);//誤差がすごいことになってる
+/*
+            //tmp_for_crossEが小さいと、最後の割り算で発散するので防止のためちいちゃい数を足す
+            tisaMat::matrix tmp_delta(batch_size, output_num, 1e-10);
+            tmp_for_crossE = tisaMat::matrix_add(tmp_for_crossE,tmp_delta);
+            */
+            error_matrix = tisaMat::Hadamard_division(error_matrix,tmp_for_crossE);//誤差がすごいことになってる(errorが少ないと発散してるっぽい)
         }
 
         //重みとかの更新量を求める前にリフレッシュ
@@ -557,6 +567,10 @@ namespace tisaNET{
         printf("  :)  The file was output successfully!!! : %s\n",filename);
     }
 
+    void Model::monitor_accuracy(bool monitor_accuracy) {
+        monitoring_accuracy = monitor_accuracy;
+    }
+
     void Model::train(double learning_rate,Data_set& train_data, Data_set& test_data, int epoc, int iteration, uint8_t Error_func) {
         if (net_layer[0].node != train_data.data[0].size()) {
             printf("Input size and number of input layer's nodes do not match");
@@ -658,10 +672,14 @@ namespace tisaNET{
             //printf("test_input\n");
             //test_mat.show();
             //printf("test_output\n");
-            output_iterate.show();
+            //output_iterate.show();
             error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
             printf("Error : ");
             tisaMat::vector_show(error);
+
+            if (monitoring_accuracy == true) {
+                m_a(output_iterate.elements,test_data.answer,Error_func);
+            }
 
             bool have_error = 0;
             for (int i = 0; i < error.size(); i++) {
@@ -675,5 +693,19 @@ namespace tisaNET{
                 break;
             }
         }
+    }
+
+    void Model::m_a(std::vector<std::vector<double>>& output, std::vector<std::vector<uint8_t>>& answer,uint8_t error_func) {
+        int total_size = answer.size();
+        int correct_count = 0;
+        for (int i = 0;i < total_size;i++) {
+            std::vector<std::vector<double>> tmp_out(1,output[i]);
+            std::vector<std::vector<uint8_t>> tmp_ans(1,answer[i]);
+            double error = (*Ef[error_func])(tmp_ans,tmp_out)[0];
+            if (error < judge) {
+                correct_count++;
+            }
+        }
+        printf("accuracy : %d / %d\n",correct_count,total_size);
     }
 }
