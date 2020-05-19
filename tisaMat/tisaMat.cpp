@@ -33,7 +33,7 @@ namespace tisaMat {
 	void matrix::show() {
 		for (int row = 0; row < mat_RC[0]; row++) {
 			for (int column = 0; column < mat_RC[1]; column++) {
-				std::cout << std::setw(8) << elements[row][column] << ' ';
+				std::cout << std::setw(4) << elements[row][column] << ' ';
 			}
 			std::cout << "\n";
 		}

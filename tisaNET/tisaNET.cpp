@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <fstream>
 #include <string>
+#include <algorithm>
 
 #define format_key {'t','i','s','a','N','E','T'}
 #define f_k_size 7
@@ -38,13 +39,14 @@ namespace tisaNET{
         //ここから訓練のデータ
         {
             std::string filename = folder + "\\" + mnist_train_d;
-            std::ifstream file_d(filename);
+            std::ifstream file_d(filename,std::ios::binary);
             if (!file_d) {
                 printf("Can not open file : %s\n", filename);
                 exit(EXIT_FAILURE);
             }
+
             filename = folder + "\\" + mnist_train_l;
-            std::ifstream file_l(filename);
+            std::ifstream file_l(filename, std::ios::binary);
             if (!file_l) {
                 printf("Can not open file : %s\n", filename);
                 exit(EXIT_FAILURE);
@@ -54,17 +56,25 @@ namespace tisaNET{
             file_l.seekg(mnist_lab_offset + (long)train_data_start);
 
             std::vector<uint8_t> tmp_d(mnist_image_size);
-            
             uint8_t tmp_for_l;
             for (int i = 0,index=train_data_start;i < sample_size;i++,index++) {
                 std::vector<uint8_t> tmp_l;
                 if (index >= 60000) {
                     file_d.seekg(mnist_pict_offset);
-                    
+                    file_l.seekg(mnist_lab_offset);
                 }
-                file_d.read(reinterpret_cast<char*>(&tmp_d[0]), mnist_image_size);
+                file_d.read(reinterpret_cast<char*>(&tmp_d[0]), sizeof(uint8_t) * mnist_image_size);
                 train_data.data.push_back(tmp_d);
                 file_l.read(reinterpret_cast<char*>(&tmp_for_l), sizeof(uint8_t));
+                /*
+                //debug
+                bool error_check = file_d.good();
+                int tell_d = file_d.tellg();
+                tell_d = (tell_d - mnist_pict_offset) / mnist_image_size;
+                int tell_l = file_l.tellg();
+                tell_l = tell_l - mnist_lab_offset;
+                //end_debug
+                */
                 if (single_output) {
                     tmp_l.push_back(tmp_for_l);
                 }
@@ -79,19 +89,34 @@ namespace tisaNET{
                     }
                 }
                 train_data.answer.push_back(tmp_l);
+                /*
+                //debug
+                std::vector<std::vector<uint8_t>> debug_d;
+                for (int row = 0,dd_count=0;row < 28;row++) {
+                    std::vector<uint8_t> tmp;
+                    for (int column = 0; column < 28;column++,dd_count++) {
+                        tmp.push_back(train_data.data.back()[dd_count]);
+                    }
+                    debug_d.push_back(tmp);
+                }
+                tisaMat::matrix debug_dm(debug_d);
+                debug_dm.show();
+                printf("%d\n",train_data.answer.back()[0]);
+                //end_debug
+                */
             }
         }
 
         //ここから評価のデータ
         {
-            std::string filename = folder + "\\" + mnist_test_d;
-            std::ifstream file_d(filename);
+            std::string filename = folder + '\\' + mnist_test_d;
+            std::ifstream file_d(filename, std::ios::binary);
             if (!file_d) {
                 printf("Can not open file : %s\n", filename);
                 exit(EXIT_FAILURE);
             }
-            filename = folder + "\\" + mnist_test_l;
-            std::ifstream file_l(filename);
+            filename = folder + '\\' + mnist_test_l;
+            std::ifstream file_l(filename, std::ios::binary);
             if (!file_l) {
                 printf("Can not open file : %s\n", filename);
                 exit(EXIT_FAILURE);
@@ -109,7 +134,7 @@ namespace tisaNET{
                     file_d.seekg(mnist_pict_offset);
 
                 }
-                file_d.read(reinterpret_cast<char*>(&tmp_d[0]), mnist_image_size);
+                file_d.read(reinterpret_cast<char*>(&tmp_d[0]), sizeof(uint8_t) * mnist_image_size);
                 test_data.data.push_back(tmp_d);
                 file_l.read(reinterpret_cast<char*>(&tmp_for_l), sizeof(uint8_t));
                 if (single_output) {
@@ -131,7 +156,7 @@ namespace tisaNET{
 
         printf("  :>  loaded MNIST successfully\n");
     }
-
+   
     double step(double X) {
         double Y;
         if (X == 0.0) {
@@ -216,7 +241,6 @@ namespace tisaNET{
         }
         
         tmp[0] /= sample_size;
-
         return tmp;
     }
 
@@ -275,8 +299,19 @@ namespace tisaNET{
             for (int i = 1; i < number_of_layer(); i++) {
                 std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
                 X = tisaMat::vector_add(X, net_layer[i].B);
+                //ソフトマックス関数を使うときはまず最大値を全部から引く
+                if (net_layer[i].Activation_f == SOFTMAX) {
+                    double max = *std::max_element(X.begin(), X.end());
+                    for (int X_count = 0; X_count < X.size(); X_count++) {
+                        X[X_count] -= max;
+                    }
+                }
+
                 for (int j = 0; j < X.size(); j++) {
                     net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
+                    if (isnan(net_layer[i].Output[j])) {
+                        bool nan_flug = 1;
+                    }
                 }
 
                 if (net_layer[i].Activation_f == SOFTMAX) {
@@ -284,7 +319,7 @@ namespace tisaNET{
                     for (int node = 0; node < net_layer[i].Output.size(); node++) {
                         sigma += net_layer[i].Output[node];
                     }
-                    tisaMat::vector_multiscalar(net_layer[i].Output,1.0 / sigma);
+                    tisaMat::vector_multiscalar(net_layer[i].Output, 1.0 / sigma);
                 }
             }
             output_matrix.elements[data_index] = net_layer.back().Output;
@@ -299,8 +334,17 @@ namespace tisaNET{
         for (int data_index = 0; data_index < sample_size; data_index++) {
             input_data(Input_data.elements[data_index]);
             for (int i = 1; i < layer_num; i++) {
-                std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
+                std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);//入力が変わってない説
                 X = tisaMat::vector_add(X, net_layer[i].B);
+                //ここまでで、活性化関数を使う前の計算が終了　なんかずっと同じ値になってる？？？
+
+                //ソフトマックス関数を使うときはまず最大値を全部から引く
+                if (net_layer[i].Activation_f == SOFTMAX) {
+                    double max = *std::max_element(X.begin(),X.end());
+                    for (int X_count = 0; X_count < X.size(); X_count++) {
+                        X[X_count] -= max;
+                    }
+                }
 
                 for (int j = 0; j < X.size(); j++) {
                     net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
@@ -327,25 +371,39 @@ namespace tisaNET{
     void Model::B_propagate(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output,uint8_t error_func, std::vector<Trainer>& trainer,double lr,tisaMat::matrix& input_batch) {
         int output_num = output.mat_RC[1];
         int batch_size = output.mat_RC[0];
-
+        bool isMCE = (error_func == CROSS_ENTROPY_ERROR) && (output_num > 1);
         //初回限定で誤差をセットして学習率もかける
+
         tisaMat::matrix error_matrix(teacher);
-        error_matrix = tisaMat::matrix_subtract(output,error_matrix);
-        //printf("error_matrix for propagate\n");
-        //error_matrix.show();
+        //多クラス分類でなければy-tが使える
+        if(!isMCE){
+            error_matrix = tisaMat::matrix_subtract(output, error_matrix);
+            //printf("error_matrix for propagate\n");
+            //error_matrix.show();
+
+            if (error_func == CROSS_ENTROPY_ERROR) {
+                tisaMat::matrix tmp_for_crossE(batch_size, output_num, 1.0);
+                tmp_for_crossE = tisaMat::matrix_subtract(tmp_for_crossE, output);
+                tmp_for_crossE = tisaMat::Hadamard_product(tmp_for_crossE, output);//たまに0になる要素がある
+                
+                //tmp_for_crossEが小さいと、最後の割り算で発散するので防止のためちいちゃい数を足す
+                tisaMat::matrix tmp_delta(batch_size, output_num, 1e-10);
+                tmp_for_crossE = tisaMat::matrix_add(tmp_for_crossE,tmp_delta);
+                
+                error_matrix = tisaMat::Hadamard_division(error_matrix, tmp_for_crossE);//誤差がすごいことになってる(errorが少ないと発散してるっぽい)
+            }
+        }
+        else {
+            tisaMat::matrix tmp_delta(batch_size, output_num, 1e-10);
+            tmp_delta = tisaMat::matrix_add(output, tmp_delta);
+            error_matrix = tisaMat::Hadamard_division(error_matrix,tmp_delta);
+            error_matrix.multi_scalar(-1);
+        }
+
         error_matrix.multi_scalar(lr);
 
-        if (error_func == CROSS_ENTROPY_ERROR) {
-            tisaMat::matrix tmp_for_crossE(batch_size,output_num,1.0);
-            tmp_for_crossE = tisaMat::matrix_subtract(tmp_for_crossE,output);
-            tmp_for_crossE = tisaMat::Hadamard_product(tmp_for_crossE,output);
-/*
-            //tmp_for_crossEが小さいと、最後の割り算で発散するので防止のためちいちゃい数を足す
-            tisaMat::matrix tmp_delta(batch_size, output_num, 1e-10);
-            tmp_for_crossE = tisaMat::matrix_add(tmp_for_crossE,tmp_delta);
-            */
-            error_matrix = tisaMat::Hadamard_division(error_matrix,tmp_for_crossE);//誤差がすごいことになってる(errorが少ないと発散してるっぽい)
-        }
+        //ほんとは出力層の微分は特別扱いで計算したい
+
 
         //重みとかの更新量を求める前にリフレッシュ
         for (int current_layer = 0; current_layer < net_layer.size() - 1;current_layer++) {
@@ -372,9 +430,15 @@ namespace tisaNET{
                     }
                     break;
                 case SOFTMAX:
-                    for (int i = 0; i < net_layer[current_layer].node; i++) {
-                        double Y = trainer[current_layer - 1].Y[batch_segment][i];
-                        dAf.elements[0][i] = Y * (1 - Y);
+                    {
+                        double tmp_softmax = 0.0;
+                        for (int count = 0; count < net_layer[current_layer].node; count++) {
+                            tmp_softmax +=  error_matrix.elements[batch_segment][count] * trainer[current_layer - 1].Y[batch_segment][count];
+                        }
+                        for (int i = 0; i < net_layer[current_layer].node; i++) {
+                            double Y = trainer[current_layer - 1].Y[batch_segment][i];
+                            dAf.elements[0][i] = Y * (1 - Y) - Y * (tmp_softmax - Y * error_matrix.elements[batch_segment][i]);
+                        }
                     }
                     break;
                 case RELU:
@@ -421,7 +485,97 @@ namespace tisaNET{
                 trainer[i].dW->multi_scalar(1.0 / batch_size);
                 tisaMat::vector_multiscalar(trainer[i].dB,1.0 / batch_size);
             }
-        }else{
+        }
+
+    }
+
+    //ごちゃごちゃ変えて実験する用
+    void Model::B_propagate2(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer, double lr, tisaMat::matrix& input_batch) {
+        int output_num = output.mat_RC[1];
+        int batch_size = output.mat_RC[0];
+        bool isMCE = (error_func == CROSS_ENTROPY_ERROR) && (output_num > 1);
+        //初回限定で誤差をセットして学習率もかける
+
+        tisaMat::matrix error_matrix(teacher);
+        error_matrix = tisaMat::matrix_subtract(output, error_matrix);
+        //printf("error_matrix for propagate\n");
+        //error_matrix.show();
+
+        error_matrix.multi_scalar(lr);
+
+        //ほんとは出力層の微分は特別扱いで計算したい
+
+
+        //重みとかの更新量を求める前にリフレッシュ
+        for (int current_layer = 0; current_layer < net_layer.size() - 1; current_layer++) {
+            trainer[current_layer].dW->multi_scalar(0);
+            tisaMat::vector_multiscalar(trainer[current_layer].dB, 0);
+        }
+
+        //重みとかの更新量の平均を出す 具体的にはバッチのパターンごとに更新量を出して、あとでバッチサイズで割る
+        for (int batch_segment = 0; batch_segment < batch_size; batch_segment++) {
+
+            //伝播していく行列(秘伝のたれ) あとで行列積をつかいたいのでベクトルではなく行列として用意します(アダマール積もつかいますが)
+            std::vector<std::vector<double>> tmp(1, error_matrix.elements[batch_segment]);
+            tisaMat::matrix propagate_matrix(tmp);
+
+            for (int current_layer = net_layer.size() - 1; current_layer > 0; current_layer--) {
+                //秘伝のたれを仕込む(伝播する行列)
+                    //ノードごとの活性化関数の微分
+                tisaMat::matrix dAf(1, net_layer[current_layer].node);
+                switch (net_layer[current_layer].Activation_f) {
+                case SIGMOID:
+                    for (int i = 0; i < net_layer[current_layer].node; i++) {
+                        double Y = trainer[current_layer - 1].Y[batch_segment][i];
+                        dAf.elements[0][i] = Y * (1 - Y);
+                    }
+                    break;
+                case SOFTMAX:
+                    break;
+                case RELU:
+                    for (int i = 0; i < net_layer[current_layer].node; i++) {
+                        dAf.elements[0][i] = 1;
+                    }
+                    break;
+                case STEP:
+                    for (int i = 0; i < net_layer[current_layer].node; i++) {
+                        dAf.elements[0][i] = 1;
+                    }
+                    break;
+                }
+                //活性化関数の微分行列と秘伝のタレのアダマール積
+                propagate_matrix = tisaMat::Hadamard_product(dAf, propagate_matrix);
+
+                //今の層の重み、バイアスの更新量を計算する
+                    //重みは順伝播のときの入力も使う
+                tisaMat::matrix W_tmp(0, 0);
+                if ((current_layer - 1) > 0) {
+                    W_tmp = tisaMat::vector_to_matrix(trainer[current_layer - 2].Y[batch_segment]);//current_layer-2のトレーナーは、前の層のトレーナー
+                    W_tmp = tisaMat::matrix_transpose(W_tmp);
+                    W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
+                }
+                else {
+                    W_tmp = tisaMat::vector_to_matrix(input_batch.elements[batch_segment]);
+                    W_tmp = tisaMat::matrix_transpose(W_tmp);
+                    W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
+                }
+
+                *(trainer[current_layer - 1].dW) = tisaMat::matrix_add(*trainer[current_layer - 1].dW, W_tmp);
+                //バイアス
+                trainer[current_layer - 1].dB = tisaMat::vector_add(trainer[current_layer - 1].dB, propagate_matrix.elements[0]);
+
+                //今の層の重みの転置行列を秘伝のたれのうしろから行列積で次の層へ
+                W_tmp = tisaMat::matrix_transpose(*(net_layer[current_layer].W));
+                propagate_matrix = tisaMat::matrix_multiply(propagate_matrix, W_tmp);
+            }
+        }
+
+        //ミニバッチ学習の場合、重みとかの更新量を平均する
+        if (batch_size > 1) {
+            for (int i = 0; i < trainer.size(); i++) {
+                trainer[i].dW->multi_scalar(1.0 / batch_size);
+                tisaMat::vector_multiscalar(trainer[i].dB, 1.0 / batch_size);
+            }
         }
 
     }
@@ -641,6 +795,7 @@ namespace tisaNET{
 
                 if (have_error) {
                     B_propagate(teach_iterate, output_iterate, Error_func, trainer, learning_rate, input_iterate);
+                    //B_propagate2(teach_iterate, output_iterate, Error_func, trainer, learning_rate, input_iterate);
                     //トレーナーの値を使って重みを調整する
                     for (int layer = 1; layer < net_layer.size(); layer++) {
                         //重み
