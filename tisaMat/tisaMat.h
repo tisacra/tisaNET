@@ -1,6 +1,7 @@
 #pragma once
-
+#include <iostream>
 #include <vector>
+#include <iomanip>
 
 namespace tisaMat {
 	class matrix {
@@ -77,7 +78,15 @@ namespace tisaMat {
 	void vector_multiscalar(std::vector<double>& vec, double scalar);
 
 	//vec‚ð•\Ž¦‚·‚é
-	void vector_show(std::vector<double>& vec);
+	//void vector_show(std::vector<double>& vec);
+	template <typename T>
+	void vector_show(std::vector<T>& vec) {
+		for (int i = 0; i < vec.size(); i++) {
+			//printf("%lf ", vec[i]);
+			std::cout << std::setw(6) << vec[i] << ' ';
+		}
+		printf("\n");
+	}
 
 	//vec‚ðŒ^•ÏŠ·‚·‚é
 	template <typename T,typename U>

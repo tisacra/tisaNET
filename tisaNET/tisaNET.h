@@ -68,9 +68,55 @@ namespace tisaNET {
 		void Create_Layer(int nodes, uint8_t Activation, double init);
 
 		//入力層(最初の層のこと)にネットワークへの入力をいれる
-		void input_data(std::vector<double>& data);
+		//void input_data(std::vector<double>& data);
+		template <typename T>
+		void input_data(std::vector<T>& data) {
+			int input_num = data.size();
+			if (net_layer.front().Output.size() != input_num) {
+				printf("input error|!|\n");
+			}
+			else {
+				std::vector<double> input = tisaMat::vector_cast<double>(data);
+				net_layer.front().Output = input;
+			}
+		}
 
 		//順伝播する
+		template <typename T>
+		//単発
+		std::vector<double> F_propagate(std::vector<T>& Input_data) {
+			std::vector<double> output_vecter(net_layer.back().Output.size());
+			input_data(Input_data);
+			for (int i = 1; i < number_of_layer(); i++) {
+				std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
+				X = tisaMat::vector_add(X, net_layer[i].B);
+				//ソフトマックス関数を使うときはまず最大値を全部から引く
+				if (net_layer[i].Activation_f == SOFTMAX) {
+					double max = *std::max_element(X.begin(), X.end());
+					for (int X_count = 0; X_count < X.size(); X_count++) {
+						X[X_count] -= max;
+					}
+				}
+
+				for (int j = 0; j < X.size(); j++) {
+					net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
+					if (isnan(net_layer[i].Output[j])) {
+						bool nan_flug = 1;
+					}
+				}
+
+				if (net_layer[i].Activation_f == SOFTMAX) {
+					double sigma = 0.0;
+					for (int node = 0; node < net_layer[i].Output.size(); node++) {
+						sigma += net_layer[i].Output[node];
+					}
+					tisaMat::vector_multiscalar(net_layer[i].Output, 1.0 / sigma);
+				}
+			}
+			output_vecter = net_layer.back().Output;
+			return output_vecter;
+		}
+
 		tisaMat::matrix F_propagate(tisaMat::matrix& Input_data);
 		tisaMat::matrix F_propagate(tisaMat::matrix& Input_data, std::vector<Trainer>& trainer);
 

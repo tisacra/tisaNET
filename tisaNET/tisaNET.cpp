@@ -60,6 +60,7 @@ namespace tisaNET{
             for (int i = 0,index=train_data_start;i < sample_size;i++,index++) {
                 std::vector<uint8_t> tmp_l;
                 if (index >= 60000) {
+                    index = 0;
                     file_d.seekg(mnist_pict_offset);
                     file_l.seekg(mnist_lab_offset);
                 }
@@ -280,7 +281,7 @@ namespace tisaNET{
         }
         net_layer.push_back(tmp);
     }
-
+/*
     void Model::input_data(std::vector<double>& data) {
         int input_num = data.size();
         if (net_layer.front().Output.size() != input_num) {
@@ -290,7 +291,7 @@ namespace tisaNET{
             net_layer.front().Output = data;
         }
     }
-
+*/
     tisaMat::matrix Model::F_propagate(tisaMat::matrix& Input_data) {
         int sample_size = Input_data.mat_RC[0];
         tisaMat::matrix output_matrix(sample_size, net_layer.back().Output.size());
@@ -397,7 +398,6 @@ namespace tisaNET{
             tisaMat::matrix tmp_delta(batch_size, output_num, 1e-10);
             tmp_delta = tisaMat::matrix_add(output, tmp_delta);
             error_matrix = tisaMat::Hadamard_division(error_matrix,tmp_delta);
-            error_matrix.multi_scalar(-1);
         }
 
         error_matrix.multi_scalar(lr);
@@ -758,6 +758,7 @@ namespace tisaNET{
         }
 
         for (int ep = 0; ep < epoc; ep++) {
+            printf("| epoc : %6d |\n", ep);
             for (int i = 0; i < iteration; i++) {
 
                 if (train_data.data.size() < batch_size * i) break;
@@ -767,7 +768,8 @@ namespace tisaNET{
                     input_iterate.elements[j] = tisaMat::vector_cast<double>(train_data.data[(batch_size * i) + j]);
                     teach_iterate[j] = train_data.answer[(batch_size * i) + j];
                 }
-                printf("| epoc : %6d |",ep);
+                
+                //printf("| epoc : %6d |",ep);
 
                 
                 //printf("input\n");
@@ -782,8 +784,8 @@ namespace tisaNET{
                 
                 
                 error = (*Ef[Error_func])(teach_iterate, output_iterate.elements);//ここではじめて？nan
-                printf("Error   :  ");
-                tisaMat::vector_show(error);
+                //printf("Error   :  ");
+                //tisaMat::vector_show(error);
 
                 bool have_error = 0;
                 for (int i = 0; i < error.size();i++) {
@@ -823,7 +825,7 @@ namespace tisaNET{
             
             //テスト(output_iterateは使いまわし)
             output_iterate = F_propagate(test_mat);
-            printf("| TEST |\n");
+            printf("| TEST |");
             //printf("test_input\n");
             //test_mat.show();
             //printf("test_output\n");

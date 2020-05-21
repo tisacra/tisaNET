@@ -208,7 +208,7 @@ namespace tisaMat {
 			vec[i] *= scalar;
 		}
 	}
-
+	/*
 	//vecを表示する
 	void vector_show(std::vector<double>& vec) {
 		for (int i = 0;i < vec.size();i++) {
@@ -216,4 +216,5 @@ namespace tisaMat {
 		}
 		printf("\n");
 	}
+	*/
 }
