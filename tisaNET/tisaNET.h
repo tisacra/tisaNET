@@ -55,10 +55,10 @@ namespace tisaNET {
 	bool print01(int bit, long Value);
 	
 	//平均二乗誤差関数
-	std::vector<double> mean_squared_error(std::vector<std::vector<uint8_t>>& teacher, std::vector<std::vector<double>>& output);
+	double mean_squared_error(std::vector<std::vector<uint8_t>>& teacher, std::vector<std::vector<double>>& output);
 
 	//交差エントロピー関数
-	std::vector<double> cross_entropy_error(std::vector<std::vector<uint8_t>>& teacher, std::vector<std::vector<double>>& output);
+	double cross_entropy_error(std::vector<std::vector<uint8_t>>& teacher, std::vector<std::vector<double>>& output);
 
 	class Model {
 	public:
@@ -141,10 +141,15 @@ namespace tisaNET {
 		//正答率を表示/非表示にする
 		void monitor_accuracy(bool monitor_accuracy);
 
+		//訓練時の誤差をイテレーションごとに記録する(csv形式で)
+		void logging_error(const char* log_file);
+
 	private:
 		bool monitoring_accuracy = false;
+		bool log_error = false;
+		std::string log_filename;
 		std::vector<layer> net_layer;
-		std::vector<double> (*Ef[2])(std::vector<std::vector<uint8_t>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
+		double (*Ef[2])(std::vector<std::vector<uint8_t>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
 		double (*Af[4])(double) = { sigmoid,ReLU,step,softmax };
 		void m_a(std::vector<std::vector<double>>& output, std::vector<std::vector<uint8_t>>& answer, uint8_t error_func);
 		void B_propagate2(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer, double lr, tisaMat::matrix& input_batch);
