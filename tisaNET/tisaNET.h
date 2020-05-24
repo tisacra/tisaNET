@@ -68,7 +68,6 @@ namespace tisaNET {
 		void Create_Layer(int nodes, uint8_t Activation, double init);
 
 		//入力層(最初の層のこと)にネットワークへの入力をいれる
-		//void input_data(std::vector<double>& data);
 		template <typename T>
 		void input_data(std::vector<T>& data) {
 			int input_num = data.size();

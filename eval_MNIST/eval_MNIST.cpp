@@ -9,7 +9,6 @@ int main()
     
     tisaNET::load_MNIST("..\\..\\MNIST", train_data, test_data, 10000, 5000, false);
 
-
     tisaNET::Model model;
     model.load_model("..\\test_tisaNET\\test_mnist.tp");
     std::vector<double> output = model.F_propagate(test_data.data[10]);

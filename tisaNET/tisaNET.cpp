@@ -283,17 +283,7 @@ namespace tisaNET{
         }
         net_layer.push_back(tmp);
     }
-/*
-    void Model::input_data(std::vector<double>& data) {
-        int input_num = data.size();
-        if (net_layer.front().Output.size() != input_num) {
-            printf("input error|!|\n");
-        }
-        else {
-            net_layer.front().Output = data;
-        }
-    }
-*/
+
     tisaMat::matrix Model::F_propagate(tisaMat::matrix& Input_data) {
         int sample_size = Input_data.mat_RC[0];
         tisaMat::matrix output_matrix(sample_size, net_layer.back().Output.size());

@@ -78,7 +78,6 @@ namespace tisaMat {
 	void vector_multiscalar(std::vector<double>& vec, double scalar);
 
 	//vec‚ð•\Ž¦‚·‚é
-	//void vector_show(std::vector<double>& vec);
 	template <typename T>
 	void vector_show(std::vector<T>& vec) {
 		for (int i = 0; i < vec.size(); i++) {
