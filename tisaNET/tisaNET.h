@@ -130,7 +130,7 @@ namespace tisaNET {
 		void initialize();
 
 		//モデルを訓練する
-		void train(double learning_rate, Data_set& train_data, Data_set& test_data, int epoc, int iteration, uint8_t Error_func);
+		void train(double learning_rate, Data_set& train_data, Data_set& test_data, int epoc, int batch_size, uint8_t Error_func);
 
 		//モデルのファイル(.tp)を読み込む
 		void load_model(const char* tp_file);

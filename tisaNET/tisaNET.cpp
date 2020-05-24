@@ -737,7 +737,7 @@ namespace tisaNET{
         log_filename = log_file;
     }
 
-    void Model::train(double learning_rate,Data_set& train_data, Data_set& test_data, int epoc, int iteration, uint8_t Error_func) {
+    void Model::train(double learning_rate,Data_set& train_data, Data_set& test_data, int epoc, int batch_size, uint8_t Error_func) {
         if (net_layer[0].node != train_data.data[0].size()) {
             printf("Input size and number of input layer's nodes do not match");
             exit(EXIT_FAILURE);
@@ -748,7 +748,13 @@ namespace tisaNET{
         }
         
         int output_num = net_layer.back().node;
-        int batch_size = train_data.data.size() / iteration;
+        int iteration = train_data.data.size() / batch_size;
+
+        if (iteration < 1) {
+            printf("batch size is over ample size|!|\n");
+            exit(EXIT_FAILURE);
+        }
+
         tisaMat::matrix output_iterate(batch_size,output_num);
         tisaMat::matrix input_iterate(batch_size, train_data.data[0].size());
         tisaMat::matrix answer_iterate(batch_size, output_num);
@@ -977,6 +983,6 @@ namespace tisaNET{
         for (int i = 0; i < progress_bar_length - bar_num;i++) {
             printf("-");
         }
-        printf("| %5.2lf%%", progress*100.0);
+        printf("| %5.2lf%% ", progress*100.0);
     }
 }
