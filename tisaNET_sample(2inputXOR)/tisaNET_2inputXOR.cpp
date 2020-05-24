@@ -31,11 +31,13 @@ int main() {
 
 	//重みなどをXaivierの初期値、Heの初期値にしたがって初期化します
 	model.initialize();
+	//訓練時にそのエポックごとの正確さを表示させます
+	model.monitor_accuracy(true);
 
 	//いよいよ学習します
-	//(学習率, 訓練用データ, 評価用データ, エポック(全体を何セット学習するか), イテレーション(1エポックに何回誤差逆伝播するか), 目的(誤差)関数)
+	//(学習率, 訓練用データ, 評価用データ, エポック(全体を何セット学習するか), バッチサイズ(全体を何個ずつに分けて学習するか), 目的(誤差)関数)
 	//目的関数には、平均二乗誤差(MEAN_SQUARED_ERROR)とクロスエントロピー誤差(CROSS_ENTROPY_ERROR)を用意しています
-	model.train(0.5,train_data,test_data,200,4,MEAN_SQUARED_ERROR);//訓練データが4つで1エポックに4回伝播なので、この時はインライン学習です
+	model.train(0.7,train_data,test_data,1000,4,MEAN_SQUARED_ERROR);//訓練データが4つで1エポックに4回伝播なので、この時はインライン学習です
 
 	//モデルのパラメーターをファイルに保存できます(拡張子は自由です)
 	model.save_model("2inXOR_model.tp");
