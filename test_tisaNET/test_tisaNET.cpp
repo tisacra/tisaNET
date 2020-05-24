@@ -20,8 +20,8 @@ int main()
     model.load_model("test_mnist.tp");
 
     model.monitor_accuracy(true);
-    model.logging_error("log_test_mnist1.csv");
-    model.train(0.001,train_data,test_data,10,1000,CROSS_ENTROPY_ERROR);
+    //model.logging_error("log_test_mnist1.csv");
+    model.train(0.001,train_data,test_data,10,2000,CROSS_ENTROPY_ERROR);
     model.save_model("test_mnist.tp");
     return 0;
 }

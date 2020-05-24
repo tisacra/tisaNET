@@ -27,6 +27,8 @@
 
 #define judge 0.05
 
+#define progress_bar_length 30
+
 namespace tisaNET{
     //MNISTからデータを作る
     bool load_MNIST(const char* path, Data_set& train_data, Data_set& test_data, int sample_size,int test_size, bool single_output) {
@@ -777,7 +779,7 @@ namespace tisaNET{
             o_file << "epoc,Error" << '\n';
 
             for (int ep = 0; ep < epoc; ep++) {
-                printf("| epoc : %6d |\n", ep);
+                printf("| epoc : %6d |", ep);
                 for (int i = 0; i < iteration; i++) {
 
                     if (train_data.data.size() < batch_size * i) break;
@@ -827,7 +829,10 @@ namespace tisaNET{
                             //tisaMat::vector_show(trainer[layer - 1].dB);
                         }
                     }
+
+                    show_train_progress(iteration, i);
                 }
+                printf("\n");
                 /*
                 //今の重みとか表示(デバッグ用)
                 for (int layer = 1; layer < net_layer.size(); layer++) {
@@ -862,7 +867,7 @@ namespace tisaNET{
         }
         else {
             for (int ep = 0; ep < epoc; ep++) {
-                printf("| epoc : %6d |\n", ep);
+                printf("| epoc : %6d |", ep);
                 for (int i = 0; i < iteration; i++) {
 
                     if (train_data.data.size() < batch_size * i) break;
@@ -910,7 +915,10 @@ namespace tisaNET{
                             //tisaMat::vector_show(trainer[layer - 1].dB);
                         }
                     }
+
+                    show_train_progress(iteration,i);
                 }
+                printf("\n");
                 /*
                 //今の重みとか表示(デバッグ用)
                 for (int layer = 1; layer < net_layer.size(); layer++) {
@@ -956,5 +964,19 @@ namespace tisaNET{
             }
         }
         printf("accuracy : %d / %d\n",correct_count,total_size);
+    }
+
+    void show_train_progress(int total_iteration, int now_iteration) {
+        printf("\033[17G|");
+        double progress = float(now_iteration+1) / float(total_iteration);
+        int bar_num = (progress+0.01) * progress_bar_length;
+        for (int i = 0;i < bar_num - 1;i++) {
+            printf("=");
+        }
+        printf(">");
+        for (int i = 0; i < progress_bar_length - bar_num;i++) {
+            printf("-");
+        }
+        printf("| %5.2lf%%", progress*100.0);
     }
 }

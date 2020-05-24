@@ -155,4 +155,6 @@ namespace tisaNET {
 		void B_propagate2(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer, double lr, tisaMat::matrix& input_batch);
 
 	};
+
+	void show_train_progress(int total_iteration,int now_iteration);
 }
