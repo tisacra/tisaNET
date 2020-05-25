@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
+#include <ctime>
 
 #define format_key {'t','i','s','a','N','E','T'}
 #define f_k_size 7
@@ -160,6 +161,75 @@ namespace tisaNET{
         printf("  :>  loaded MNIST successfully\n");
     }
    
+    //256色BMPファイルから一次配列をつくる
+    std::vector<uint8_t> vec_from_256bmp(const char* bmp_file) {
+        std::ifstream file(bmp_file, std::ios::binary);
+        if (!file) {
+            printf("failed to open file : %s\n", bmp_file);
+            exit(EXIT_FAILURE);
+        }
+        char file_check[2];
+        file.read(file_check,sizeof(char)*2);
+        if (file_check[0] != 'B' || file_check[1] != 'M') {
+            printf("%s is not BMP file\n",bmp_file);
+            exit(EXIT_FAILURE);
+        }
+
+        int filesize;
+        char intbuf[4];
+        file.read(intbuf, sizeof(int) * 1);
+        filesize = intbuf[3] << 24 | intbuf[2] << 16 | intbuf[1] << 8 | intbuf[0];
+
+        file.seekg(sizeof(char)*10,std::ios_base::beg);
+        int todata;
+        file.read(intbuf,sizeof(int)*1);
+        todata = intbuf[3] << 24 | intbuf[2] << 16 | intbuf[1] << 8 | intbuf[0];
+
+        int widge, height;
+        file.seekg(sizeof(char) * 18, std::ios_base::beg);
+        file.read(intbuf, sizeof(int) * 1);
+        widge = intbuf[3] << 24 | intbuf[2] << 16 | intbuf[1] << 8 | intbuf[0];
+        file.read(intbuf, sizeof(int) * 1);
+        height = intbuf[3] << 24 | intbuf[2] << 16 | intbuf[1] << 8 | intbuf[0];
+
+        file.seekg(sizeof(char)*(todata),std::ios_base::beg);
+        std::vector<uint8_t> tmp(filesize - todata);
+        std::vector<uint8_t> FF(tmp.size(),0xff);
+        file.read(reinterpret_cast<char*>(&tmp[0]),sizeof(uint8_t)*(filesize - todata));
+        tmp = tisaMat::vector_subtract(FF, tmp);
+        
+        //上下反転
+        for (int i = 0; i < height/2;i++) {
+            for (int j = 0; j < widge;j++) {
+                std::swap(tmp[widge*i + j],tmp[widge*(height-1-i) + j]);
+            }
+        }
+        return tmp;
+    }
+
+    void data_shuffle(Data_set& sdata) {
+        int center_index = sdata.data.size() / 2;
+        int sample_size = sdata.data.size();
+        std::random_device seed_gen;
+        std::default_random_engine rand_gen(seed_gen());
+        std::vector<int> page;
+        
+        //シャッフルの基準になる配列(これをシャッフルして、要素の並びをまねさせる)
+        for (int i = 0; i < sample_size;i++) {
+            page.push_back(i);
+        }
+        std::shuffle(page.begin(),page.end(),rand_gen);
+
+        for (int i = sample_size-1; i > 0;i--) {
+            int swap_index = std::distance(page.begin(),std::find(page.begin(),page.end(),i));
+            if (i != swap_index) {
+                std::swap(page[swap_index],page[i]);
+                std::swap(sdata.data[swap_index], sdata.data[i]);
+                std::swap(sdata.answer[swap_index], sdata.answer[i]);
+            }
+        }
+    }
+
     double step(double X) {
         double Y;
         if (X == 0.0) {
@@ -284,7 +354,7 @@ namespace tisaNET{
         net_layer.push_back(tmp);
     }
 
-    tisaMat::matrix Model::F_propagate(tisaMat::matrix& Input_data) {
+    tisaMat::matrix Model::feed_forward(tisaMat::matrix& Input_data) {
         int sample_size = Input_data.mat_RC[0];
         tisaMat::matrix output_matrix(sample_size, net_layer.back().Output.size());
         for (int data_index = 0;data_index < sample_size;data_index++) {
@@ -320,7 +390,7 @@ namespace tisaNET{
         return output_matrix;
     }
     //訓練用
-    tisaMat::matrix Model::F_propagate(tisaMat::matrix& Input_data,std::vector<Trainer>& trainer) {
+    tisaMat::matrix Model::feed_forward(tisaMat::matrix& Input_data,std::vector<Trainer>& trainer) {
         int sample_size = Input_data.mat_RC[0];
         tisaMat::matrix output_matrix(sample_size, net_layer.back().Output.size());
         int layer_num = number_of_layer();
@@ -776,6 +846,9 @@ namespace tisaNET{
 
             for (int ep = 0; ep < epoc; ep++) {
                 printf("| epoc : %6d |", ep);
+
+                data_shuffle(train_data);
+
                 for (int i = 0; i < iteration; i++) {
 
                     if (train_data.data.size() < batch_size * i) break;
@@ -791,7 +864,7 @@ namespace tisaNET{
 
                     //printf("input\n");
                     //input_iterate.show();
-                    output_iterate = F_propagate(input_iterate, trainer);
+                    output_iterate = feed_forward(input_iterate, trainer);
 
                     //printf("output\n");
                     //output_iterate.show();
@@ -842,14 +915,19 @@ namespace tisaNET{
                 */
 
                 //テスト(output_iterateは使いまわし)
-                output_iterate = F_propagate(test_mat);
+                output_iterate = feed_forward(test_mat);
                 printf("| TEST |");
                 //printf("test_input\n");
                 //test_mat.show();
                 //printf("test_output\n");
                 //output_iterate.show();
+                char ts[] = { "\0" };
+                time_t t = time(nullptr);
+                #pragma warning(suppress : 4996)
+                tm* timeptr = localtime(&t);
+                strftime(ts, 20, "%Y/%m/%d %H:%M:%S", timeptr);
                 error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
-                printf("Error : %lf\n",error);
+                printf("Error : %lf <timestamp : %s>\n", error, ts);
 
                 if (monitoring_accuracy == true) {
                     m_a(output_iterate.elements, test_data.answer, Error_func);
@@ -864,6 +942,9 @@ namespace tisaNET{
         else {
             for (int ep = 0; ep < epoc; ep++) {
                 printf("| epoc : %6d |", ep);
+
+                data_shuffle(train_data);
+
                 for (int i = 0; i < iteration; i++) {
 
                     if (train_data.data.size() < batch_size * i) break;
@@ -879,7 +960,7 @@ namespace tisaNET{
 
                     //printf("input\n");
                     //input_iterate.show();
-                    output_iterate = F_propagate(input_iterate, trainer);
+                    output_iterate = feed_forward(input_iterate, trainer);
 
                     //printf("output\n");
                     //output_iterate.show();
@@ -928,14 +1009,19 @@ namespace tisaNET{
                 */
 
                 //テスト(output_iterateは使いまわし)
-                output_iterate = F_propagate(test_mat);
+                output_iterate = feed_forward(test_mat);
                 printf("| TEST |");
                 //printf("test_input\n");
                 //test_mat.show();
                 //printf("test_output\n");
                 //output_iterate.show();
+                char ts[] = {"\0"};
+                time_t t = time(nullptr);
+                std::tm* timeptr = nullptr;
+                localtime_s(timeptr,&t);
+                strftime(ts,20,"%Y/%m/%d %H:%M:%S",timeptr);
                 error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
-                printf("Error : %lf\n", error);
+                printf("Error : %lf <timestamp : %s>\n", error,ts);
 
                 if (monitoring_accuracy == true) {
                     m_a(output_iterate.elements, test_data.answer, Error_func);

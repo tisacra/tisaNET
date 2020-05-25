@@ -95,7 +95,7 @@ namespace tisaMat {
 	}
 
 	//vec1とvec2を引く
-	std::vector<double> vector_subtract(std::vector<double>& vec1, std::vector<double>& vec2) {
+	/*std::vector<double> vector_subtract(std::vector<double>& vec1, std::vector<double>& vec2) {
 		if (vec1.size() != vec2.size()) {
 			return std::vector<double>();
 		}
@@ -106,7 +106,7 @@ namespace tisaMat {
 			}
 			return tmp;
 		}
-	}
+	}*/
 
 	//mat1とmat2を掛ける（行列の積）
 	matrix matrix_multiply(matrix& mat1, matrix& mat2) {

@@ -23,8 +23,7 @@
 #define CROSS_ENTROPY_ERROR 1
 
 namespace tisaNET {
-	class Data_set {
-	public:
+	struct Data_set {
 		std::vector<std::vector<uint8_t>> data;
 		std::vector<std::vector<uint8_t>> answer;
 	};
@@ -45,6 +44,9 @@ namespace tisaNET {
 
 	//MNIST‚©‚çƒf[ƒ^‚ğì‚é
 	bool load_MNIST(const char* path,Data_set& train_data,Data_set& test_data, int sample_size,int test_size, bool single_output);
+
+	//256FBMPƒtƒ@ƒCƒ‹‚©‚çˆêŸ”z—ñ‚ğì‚é
+	std::vector<uint8_t> vec_from_256bmp(const char *bmp_file);
 
 	double step(double X);
 	double sigmoid(double X);
@@ -83,7 +85,7 @@ namespace tisaNET {
 		//‡“`”d‚·‚é
 		template <typename T>
 		//’P”­
-		std::vector<double> F_propagate(std::vector<T>& Input_data) {
+		std::vector<double> feed_forward(std::vector<T>& Input_data) {
 			std::vector<double> output_vecter(net_layer.back().Output.size());
 			input_data(Input_data);
 			for (int i = 1; i < number_of_layer(); i++) {
@@ -116,8 +118,8 @@ namespace tisaNET {
 			return output_vecter;
 		}
 
-		tisaMat::matrix F_propagate(tisaMat::matrix& Input_data);
-		tisaMat::matrix F_propagate(tisaMat::matrix& Input_data, std::vector<Trainer>& trainer);
+		tisaMat::matrix feed_forward(tisaMat::matrix& Input_data);
+		tisaMat::matrix feed_forward(tisaMat::matrix& Input_data, std::vector<Trainer>& trainer);
 
 		//‹tŒë·“`”d‚·‚é
 		void B_propagate(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer,double lr, tisaMat::matrix& input_batch);

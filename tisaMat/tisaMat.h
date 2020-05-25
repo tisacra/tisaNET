@@ -54,7 +54,20 @@ namespace tisaMat {
 	matrix matrix_subtract(tisaMat::matrix& mat1, tisaMat::matrix& mat2);
 
 	//vec1‚Ævec2‚ðˆø‚­
-	std::vector<double> vector_subtract(std::vector<double>& vec1, std::vector<double>& vec2);
+	//std::vector<double> vector_subtract(std::vector<double>& vec1, std::vector<double>& vec2);
+	template <typename T>
+	std::vector<T> vector_subtract(std::vector<T>& vec1, std::vector<T>& vec2) {
+		if (vec1.size() != vec2.size()) {
+			return std::vector<T>();
+		}
+		else {
+			std::vector<T> tmp(vec1.size());
+			for (int i = 0; i < tmp.size(); i++) {
+				tmp[i] = vec1[i] - vec2[i];
+			}
+			return tmp;
+		}
+	}
 
 	//mat1‚Æmat2‚ðŠ|‚¯‚éis—ñ‚ÌÏj
 	matrix matrix_multiply(matrix& mat1, matrix& mat2);
