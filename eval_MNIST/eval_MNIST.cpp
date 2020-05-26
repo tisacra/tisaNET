@@ -3,7 +3,7 @@
 
 int main()
 {
-    std::vector<uint8_t> eval = tisaNET::vec_from_256bmp("..\\..\\my8.bmp");
+    std::vector<uint8_t> eval = tisaNET::vec_from_256bmp("..\\..\\my9.bmp");
     for (int k = 0; k < 28; k++) {
         for (int i = 0; i < 28; i++) {
             int tmp = eval[i + k*28];
