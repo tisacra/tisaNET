@@ -93,8 +93,7 @@ namespace tisaNET{
                     }
                 }
                 train_data.answer.push_back(tmp_l);
-                /*
-                //debug
+                /*//debug
                 std::vector<std::vector<uint8_t>> debug_d;
                 for (int row = 0,dd_count=0;row < 28;row++) {
                     std::vector<uint8_t> tmp;
@@ -835,6 +834,13 @@ namespace tisaNET{
             trainer.push_back(tmp);
         }
 
+        char ts[20] = { "\0" };
+        time_t t = time(nullptr);
+        std::tm timestr;
+        localtime_s(&timestr, &t);
+        strftime(ts, 20, "%Y/%m/%d %H:%M:%S", &timestr);
+        printf("<trainning started at %s>\n",ts);
+
         //CSV形式で誤差を記録する準備
         if (log_error) {
             std::ofstream o_file(log_filename);
@@ -921,11 +927,9 @@ namespace tisaNET{
                 //test_mat.show();
                 //printf("test_output\n");
                 //output_iterate.show();
-                char ts[] = { "\0" };
-                time_t t = time(nullptr);
-                #pragma warning(suppress : 4996)
-                tm* timeptr = localtime(&t);
-                strftime(ts, 20, "%Y/%m/%d %H:%M:%S", timeptr);
+                t = time(nullptr);
+                localtime_s(&timestr, &t);
+                strftime(ts, 20, "%Y/%m/%d %H:%M:%S", &timestr);
                 error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
                 printf("Error : %lf <timestamp : %s>\n", error, ts);
 
@@ -1015,11 +1019,9 @@ namespace tisaNET{
                 //test_mat.show();
                 //printf("test_output\n");
                 //output_iterate.show();
-                char ts[] = {"\0"};
-                time_t t = time(nullptr);
-                std::tm* timeptr = nullptr;
-                localtime_s(timeptr,&t);
-                strftime(ts,20,"%Y/%m/%d %H:%M:%S",timeptr);
+                t = time(nullptr);
+                localtime_s(&timestr,&t);
+                strftime(ts,20,"%Y/%m/%d %H:%M:%S",&timestr);
                 error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
                 printf("Error : %lf <timestamp : %s>\n", error,ts);
 
