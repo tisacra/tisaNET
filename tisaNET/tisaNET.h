@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <vector>
 #include <random>
+#include <algorithm>
 
 #define SIGMOID 0
 #define RELU 1
@@ -23,6 +24,7 @@
 #define CROSS_ENTROPY_ERROR 1
 
 namespace tisaNET {
+
 	struct Data_set {
 		std::vector<std::vector<uint8_t>> data;
 		std::vector<std::vector<uint8_t>> answer;
@@ -101,9 +103,6 @@ namespace tisaNET {
 
 				for (int j = 0; j < X.size(); j++) {
 					net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
-					if (isnan(net_layer[i].Output[j])) {
-						bool nan_flug = 1;
-					}
 				}
 
 				if (net_layer[i].Activation_f == SOFTMAX) {

@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <fstream>
 #include <string>
-#include <algorithm>
 #include <ctime>
 
 #define format_key {'t','i','s','a','N','E','T'}
@@ -30,7 +29,18 @@
 
 #define progress_bar_length 30
 
+#ifdef _MSC_VER
+struct tm* localtime_r(const time_t* time, struct tm* resultp){
+    if (localtime_s(resultp, time))
+        return nullptr;
+    return resultp;
+}
+#endif
+
 namespace tisaNET{
+
+    const char* Af_name[5] = { "SIGMOID","RELU","STEP","SOFTMAX","INPUT" };
+
     //MNISTからデータを作る
     bool load_MNIST(const char* path, Data_set& train_data, Data_set& test_data, int sample_size,int test_size, bool single_output) {
         std::random_device seed_gen;
@@ -347,7 +357,6 @@ namespace tisaNET{
         else {
             tmp.node = nodes;
             tmp.Activation_f = Activation;
-            tmp.Activation_f = NULL;
             tmp.Output = std::vector<double>(nodes);
         }
         net_layer.push_back(tmp);
@@ -371,9 +380,9 @@ namespace tisaNET{
 
                 for (int j = 0; j < X.size(); j++) {
                     net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
-                    if (isnan(net_layer[i].Output[j])) {
+                    /*if (isnan(net_layer[i].Output[j])) {
                         bool nan_flug = 1;
-                    }
+                    }*/
                 }
 
                 if (net_layer[i].Activation_f == SOFTMAX) {
@@ -410,9 +419,9 @@ namespace tisaNET{
 
                 for (int j = 0; j < X.size(); j++) {
                     net_layer[i].Output[j] = (*Af[net_layer[i].Activation_f])(X[j]);
-                    if (isnan(net_layer[i].Output[j])) {
+                    /*if (isnan(net_layer[i].Output[j])) {
                         bool nan_flug = 1;
-                    }
+                    }*/
                 }
 
                 if (net_layer[i].Activation_f == SOFTMAX) {
@@ -743,6 +752,12 @@ namespace tisaNET{
 
         delete[] node;
         delete[] Activation_f;
+
+        printf("|loaded model|\n");
+        //ロードしたモデルの概形を表示する
+        for (int i = 0;i < net_layer.size();i++) {
+            printf("Activation function : %s (node : %d)\n",Af_name[net_layer[i].Activation_f],net_layer[i].node);
+        }
     }
 
     void Model::save_model(const char* filename) {
@@ -837,7 +852,7 @@ namespace tisaNET{
         char ts[20] = { "\0" };
         time_t t = time(nullptr);
         std::tm timestr;
-        localtime_s(&timestr, &t);
+        localtime_r(&t ,&timestr);
         strftime(ts, 20, "%Y/%m/%d %H:%M:%S", &timestr);
         printf("<trainning started at %s>\n",ts);
 
@@ -928,7 +943,7 @@ namespace tisaNET{
                 //printf("test_output\n");
                 //output_iterate.show();
                 t = time(nullptr);
-                localtime_s(&timestr, &t);
+                localtime_r(&t, &timestr);
                 strftime(ts, 20, "%Y/%m/%d %H:%M:%S", &timestr);
                 error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
                 printf("Error : %lf <timestamp : %s>\n", error, ts);
@@ -1020,7 +1035,7 @@ namespace tisaNET{
                 //printf("test_output\n");
                 //output_iterate.show();
                 t = time(nullptr);
-                localtime_s(&timestr,&t);
+                localtime_r(&t, &timestr);
                 strftime(ts,20,"%Y/%m/%d %H:%M:%S",&timestr);
                 error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
                 printf("Error : %lf <timestamp : %s>\n", error,ts);
