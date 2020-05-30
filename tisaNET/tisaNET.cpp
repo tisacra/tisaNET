@@ -42,7 +42,7 @@ namespace tisaNET{
     const char* Af_name[5] = { "SIGMOID","RELU","STEP","SOFTMAX","INPUT" };
 
     //MNISTからデータを作る
-    bool load_MNIST(const char* path, Data_set& train_data, Data_set& test_data, int sample_size,int test_size, bool single_output) {
+    void load_MNIST(const char* path, Data_set& train_data, Data_set& test_data, int sample_size,int test_size, bool single_output) {
         std::random_device seed_gen;
         std::default_random_engine rand_gen(seed_gen());
         std::string folder = path;
