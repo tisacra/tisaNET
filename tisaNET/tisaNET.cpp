@@ -27,7 +27,7 @@
 
 #define judge 0.05
 
-#define progress_bar_length 30
+#define progress_bar_length 40
 
 #ifdef _MSC_VER
 struct tm* localtime_r(const time_t* time, struct tm* resultp){
@@ -42,7 +42,7 @@ namespace tisaNET{
     const char* Af_name[5] = { "SIGMOID","RELU","STEP","SOFTMAX","INPUT" };
 
     //MNISTからデータを作る
-    void load_MNIST(const char* path, Data_set& train_data, Data_set& test_data, int sample_size,int test_size, bool single_output) {
+    void load_MNIST(const char* path, Data_set& train_data, Data_set& test_data,int sample_size,int test_size, bool single_output) {
         std::random_device seed_gen;
         std::default_random_engine rand_gen(seed_gen());
         std::string folder = path;
@@ -50,7 +50,7 @@ namespace tisaNET{
         unsigned int train_data_start = rand_gen() % 60000;
         unsigned int test_data_start = rand_gen() % 10000;
         //ここから訓練のデータ
-        {
+        if(sample_size > 0){
             std::string filename = folder + "\\" + mnist_train_d;
             std::ifstream file_d(filename,std::ios::binary);
             if (!file_d) {
@@ -169,7 +169,62 @@ namespace tisaNET{
 
         printf("  :>  loaded MNIST successfully\n");
     }
-   
+
+    void load_MNIST(const char* path, Data_set& test_data,const int test_size, bool single_output) {
+        std::random_device seed_gen;
+        std::default_random_engine rand_gen(seed_gen());
+        std::string folder = path;
+
+        unsigned int test_data_start = rand_gen() % 10000;
+        {
+            std::string filename = folder + '\\' + mnist_test_d;
+            std::ifstream file_d(filename, std::ios::binary);
+            if (!file_d) {
+                printf("Can not open file : %s\n", filename);
+                exit(EXIT_FAILURE);
+            }
+            filename = folder + '\\' + mnist_test_l;
+            std::ifstream file_l(filename, std::ios::binary);
+            if (!file_l) {
+                printf("Can not open file : %s\n", filename);
+                exit(EXIT_FAILURE);
+            }
+
+            file_d.seekg(mnist_pict_offset + (long)(test_data_start * mnist_image_size));
+            file_l.seekg((long)mnist_lab_offset + (long)test_data_start);
+
+            std::vector<uint8_t> tmp_d(mnist_image_size);
+
+            uint8_t tmp_for_l;
+            for (int i = 0, index = test_data_start; i < test_size; i++, index++) {
+                std::vector<uint8_t> tmp_l;
+                if (index >= 60000) {
+                    file_d.seekg(mnist_pict_offset);
+
+                }
+                file_d.read(reinterpret_cast<char*>(&tmp_d[0]), sizeof(uint8_t) * mnist_image_size);
+                test_data.data.push_back(tmp_d);
+                file_l.read(reinterpret_cast<char*>(&tmp_for_l), sizeof(uint8_t));
+                if (single_output) {
+                    tmp_l.push_back(tmp_for_l);
+                }
+                else {
+                    for (int bit = 0; bit < 10; bit++) {
+                        if (bit == tmp_for_l) {
+                            tmp_l.push_back(1);
+                        }
+                        else {
+                            tmp_l.push_back(0);
+                        }
+                    }
+                }
+                test_data.answer.push_back(tmp_l);
+            }
+        }
+
+        printf("  :>  loaded MNIST successfully\n");
+    }
+
     //256色BMPファイルから一次配列をつくる
     std::vector<uint8_t> vec_from_256bmp(const char* bmp_file) {
         std::ifstream file(bmp_file, std::ios::binary);
@@ -866,7 +921,7 @@ namespace tisaNET{
             o_file << "epoc,Error" << '\n';
 
             for (int ep = 0; ep < epoc; ep++) {
-                printf("| epoc : %6d |", ep);
+                printf("| epoc : %6d / %6d|\n", ep+1, epoc);
 
                 data_shuffle(train_data);
 
@@ -960,7 +1015,7 @@ namespace tisaNET{
         }
         else {
             for (int ep = 0; ep < epoc; ep++) {
-                printf("| epoc : %6d |", ep);
+                printf("| epoc : %6d / %6d|\n", ep+1,epoc);
 
                 data_shuffle(train_data);
 
@@ -1066,7 +1121,7 @@ namespace tisaNET{
     }
 
     void show_train_progress(int total_iteration, int now_iteration) {
-        printf("\033[17G|");
+        printf("\r|");
         double progress = float(now_iteration+1) / float(total_iteration);
         int bar_num = (progress+0.01) * progress_bar_length;
         for (int i = 0;i < bar_num - 1;i++) {
