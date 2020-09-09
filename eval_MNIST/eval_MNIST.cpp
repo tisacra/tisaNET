@@ -16,12 +16,12 @@ int main()
     tisaNET::load_MNIST("..\\..\\MNIST",eval,10,false);
     
     tisaNET::Model model;
-    model.load_model("..\\test_tisaNET\\test_mnist.tp");
+    model.load_model("..\\test_tisaNET\\mnist0910_2.tp");
     for (int i = 0; i < 10;i++) {
         std::vector<double> output = model.feed_forward(eval.data[i]);
         for (int k = 0; k < 28; k++) {
-            for (int i = 0; i < 28; i++) {
-                int tmp = eval.data[i][k * 28];
+            for (int j = 0; j < 28; j++) {
+                int tmp = eval.data[i][k * 28 + j] * 256;
                 printf("%3u ", tmp);
             }
             printf("\n");

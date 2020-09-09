@@ -69,6 +69,7 @@ namespace tisaNET{
             file_l.seekg(mnist_lab_offset + (long)train_data_start);
 
             std::vector<uint8_t> tmp_d(mnist_image_size);
+            std::vector<double> tmp_d_use(mnist_image_size);
             uint8_t tmp_for_l;
             for (int i = 0,index=train_data_start;i < sample_size;i++,index++) {
                 std::vector<uint8_t> tmp_l;
@@ -78,7 +79,10 @@ namespace tisaNET{
                     file_l.seekg(mnist_lab_offset);
                 }
                 file_d.read(reinterpret_cast<char*>(&tmp_d[0]), sizeof(uint8_t) * mnist_image_size);
-                train_data.data.push_back(tmp_d);
+                for (int j = 0; j < mnist_image_size; j++) {
+                    tmp_d_use[j] = tmp_d[j] / 256.;
+                }
+                train_data.data.push_back(tmp_d_use);
                 file_l.read(reinterpret_cast<char*>(&tmp_for_l), sizeof(uint8_t));
                 /*
                 //debug
@@ -139,7 +143,8 @@ namespace tisaNET{
             file_l.seekg((long)mnist_lab_offset + (long)test_data_start);
 
             std::vector<uint8_t> tmp_d(mnist_image_size);
-            
+            std::vector<double> tmp_d_use(mnist_image_size);
+
             uint8_t tmp_for_l;
             for (int i = 0, index = test_data_start; i < test_size; i++, index++) {
                 std::vector<uint8_t> tmp_l;
@@ -148,7 +153,10 @@ namespace tisaNET{
 
                 }
                 file_d.read(reinterpret_cast<char*>(&tmp_d[0]), sizeof(uint8_t) * mnist_image_size);
-                test_data.data.push_back(tmp_d);
+                for (int j = 0; j < mnist_image_size; j++) {
+                    tmp_d_use[j] = tmp_d[j] / 256.;
+                }
+                test_data.data.push_back(tmp_d_use);
                 file_l.read(reinterpret_cast<char*>(&tmp_for_l), sizeof(uint8_t));
                 if (single_output) {
                     tmp_l.push_back(tmp_for_l);
@@ -194,6 +202,7 @@ namespace tisaNET{
             file_l.seekg((long)mnist_lab_offset + (long)test_data_start);
 
             std::vector<uint8_t> tmp_d(mnist_image_size);
+            std::vector<double> tmp_d_use(mnist_image_size);
 
             uint8_t tmp_for_l;
             for (int i = 0, index = test_data_start; i < test_size; i++, index++) {
@@ -203,7 +212,10 @@ namespace tisaNET{
 
                 }
                 file_d.read(reinterpret_cast<char*>(&tmp_d[0]), sizeof(uint8_t) * mnist_image_size);
-                test_data.data.push_back(tmp_d);
+                for (int j = 0; j < mnist_image_size; j++) {
+                    tmp_d_use[j] = tmp_d[j] / 256.;
+                }
+                test_data.data.push_back(tmp_d_use);
                 file_l.read(reinterpret_cast<char*>(&tmp_for_l), sizeof(uint8_t));
                 if (single_output) {
                     tmp_l.push_back(tmp_for_l);

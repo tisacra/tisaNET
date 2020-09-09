@@ -14,16 +14,16 @@ int main()
     tisaNET::Model model;
     /*
     model.Create_Layer(784,INPUT);
+    model.Create_Layer(32, RELU);
     model.Create_Layer(32, SIGMOID);
-    model.Create_Layer(16, SIGMOID);
     model.Create_Layer(10, SOFTMAX);
     model.initialize();
     */
-    model.load_model("mnist0910.tp");
+    model.load_model("mnist0910_2.tp");
 
     model.monitor_accuracy(true);
-    model.logging_error("log_mnist0910.csv");
-    model.train(0.001,train_data,test_data,5,10,CROSS_ENTROPY_ERROR);
-    model.save_model("mnist0910.tp");
+    model.logging_error("log_mnist0910_2.csv");
+    model.train(0.01,train_data,test_data,5,10,CROSS_ENTROPY_ERROR);
+    model.save_model("mnist0910_2.tp");
     return 0;
 }
