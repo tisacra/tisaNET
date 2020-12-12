@@ -19,6 +19,8 @@
 #define STEP 2
 #define SOFTMAX 3
 #define INPUT 4
+#define COMVOLUTE 5
+#define NORMALIZE 6
 
 #define MEAN_SQUARED_ERROR 0
 #define CROSS_ENTROPY_ERROR 1
@@ -30,12 +32,20 @@ namespace tisaNET {
 		std::vector<std::vector<uint8_t>> answer;
 	};
 
-	struct layer {
+	class layer {
+	public:
 		uint8_t Activation_f = 0;
-		unsigned short node = 0;
+		uint16_t node = 0;
 		tisaMat::matrix *W = nullptr;
 		std::vector<double> B;
 		std::vector<double> Output;
+
+		//畳み込み層のためのデータ
+		tisaMat::matrix *filter = nullptr;
+		uint8_t stride = 1;
+		uint16_t dim2_RC[2];
+		uint8_t filter_RC[2];
+		void comvolute(std::vector<double>& input);
 	};
 
 	struct Trainer {
@@ -72,16 +82,31 @@ namespace tisaNET {
 		void Create_Layer(int Outputs, uint8_t Activation);
 		void Create_Layer(int nodes, uint8_t Activation, double init);
 
+		//畳み込み層をつくる
+		void Create_Comvolute_Layer(int row,int column, std::vector<std::vector<double>>& filter);
+		void Create_Comvolute_Layer(int row, int column, int filter_row, int filter_col);
+		void Create_Comvolute_Layer(int row, int column, std::vector<std::vector<double>>& filter,int stride);
+		void Create_Comvolute_Layer(int row, int column, int filter_row, int filter_col,int stride);
+
+
 		//入力層(最初の層のこと)にネットワークへの入力をいれる
 		template <typename T>
 		void input_data(std::vector<T>& data) {
 			int input_num = data.size();
-			if (net_layer.front().Output.size() != input_num) {
+			if (net_layer.front().node != input_num) {
 				printf("input error|!|\n");
 			}
 			else {
 				std::vector<double> input = tisaMat::vector_cast<double>(data);
-				net_layer.front().Output = input;
+				if (net_layer.front().Activation_f == COMVOLUTE) {
+					net_layer.front().comvolute(input);
+					for (int i = 1;net_layer[i].Activation_f == COMVOLUTE;i++) {
+						net_layer[i].comvolute(net_layer[i-1].Output);
+					}
+				}
+				else if (net_layer.front().Activation_f == INPUT) {
+					net_layer.front().Output = input;
+				}
 			}
 		}
 
@@ -91,7 +116,7 @@ namespace tisaNET {
 		std::vector<double> feed_forward(std::vector<T>& Input_data) {
 			std::vector<double> output_vecter(net_layer.back().Output.size());
 			input_data(Input_data);
-			for (int i = 1; i < number_of_layer(); i++) {
+			for (int i = back_prop_offset; i < number_of_layer(); i++) {
 				std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
 				X = tisaMat::vector_add(X, net_layer[i].B);
 				//ソフトマックス関数を使うときはまず最大値を全部から引く
@@ -148,6 +173,8 @@ namespace tisaNET {
 	private:
 		bool monitoring_accuracy = false;
 		bool log_error = false;
+		uint8_t back_prop_offset = 0;
+		uint8_t comv_count = 0;
 		std::string log_filename;
 		std::vector<layer> net_layer;
 		double (*Ef[2])(std::vector<std::vector<uint8_t>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
