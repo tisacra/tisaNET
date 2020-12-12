@@ -41,10 +41,12 @@ namespace tisaNET {
 		std::vector<double> Output;
 
 		//畳み込み層のためのデータ
-		tisaMat::matrix *filter = nullptr;
+		//Wで代用のため廃止
+		//std::vector<tisaMat::matrix> filter;
 		uint8_t stride = 1;
 		uint16_t dim2_RC[2];
-		uint8_t filter_RC[2];
+		uint8_t filter_dim3[3];
+		uint8_t filter_num = 1;
 		void comvolute(std::vector<double>& input);
 	};
 
@@ -83,10 +85,14 @@ namespace tisaNET {
 		void Create_Layer(int nodes, uint8_t Activation, double init);
 
 		//畳み込み層をつくる
+		//フィルター手動設定(保留)
+		/*
 		void Create_Comvolute_Layer(int row,int column, std::vector<std::vector<double>>& filter);
-		void Create_Comvolute_Layer(int row, int column, int filter_row, int filter_col);
-		void Create_Comvolute_Layer(int row, int column, std::vector<std::vector<double>>& filter,int stride);
-		void Create_Comvolute_Layer(int row, int column, int filter_row, int filter_col,int stride);
+		void Create_Comvolute_Layer(int row, int column, std::vector<std::vector<double>>& filter, int stride);
+		*/
+		//フィルター指定なし
+		void Create_Comvolute_Layer(int row, int column, int filter_row, int filter_col,int depth, int filter_num);
+		void Create_Comvolute_Layer(int row, int column, int filter_row, int filter_col,int depth, int filter_num,int stride);
 
 
 		//入力層(最初の層のこと)にネットワークへの入力をいれる
@@ -95,6 +101,7 @@ namespace tisaNET {
 			int input_num = data.size();
 			if (net_layer.front().node != input_num) {
 				printf("input error|!|\n");
+				exit(EXIT_FAILURE);
 			}
 			else {
 				std::vector<double> input = tisaMat::vector_cast<double>(data);
