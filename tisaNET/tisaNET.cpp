@@ -880,7 +880,7 @@ namespace tisaNET{
         std::uniform_real_distribution<> uni(0.0,1.0);
         std::normal_distribution<> dist;
 
-        for (int current_layer = 0; current_layer < back_prop_offset; current_layer++) {
+        for (int current_layer = 0; current_layer < comv_count; current_layer++) {
             int W_row = net_layer[current_layer].W->mat_RC[0];
             int W_column = net_layer[current_layer].W->mat_RC[1];
             for (int R = 0; R < W_row; R++) {
@@ -1092,9 +1092,9 @@ namespace tisaNET{
             }
         }
         else { 
-            file.write(reinterpret_cast<char*>(0),sizeof(uint8_t)); 
+            file.write(reinterpret_cast<char*>(&comv_count),sizeof(uint8_t)); 
         }
-
+        
         //ここからモデルのパラメーターをファイルに書き込んでいく
         for (int current_layer = back_prop_offset; current_layer < layer; current_layer++) {
             int W_row = net_layer[current_layer].W->mat_RC[0];
