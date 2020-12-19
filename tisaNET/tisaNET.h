@@ -44,10 +44,14 @@ namespace tisaNET {
 		//Wで代用のため廃止
 		//std::vector<tisaMat::matrix> filter;
 		uint8_t stride = 1;
-		uint16_t dim2_RC[2];
+		uint16_t input_dim3[3];
 		uint8_t filter_dim3[3];
 		uint8_t filter_num = 1;
+		tisaMat::matrix* Output_mat = nullptr;
 		void comvolute(std::vector<double>& input);
+		void comvolute(tisaMat::matrix& input);
+		void output_vec_to_mat();
+		void output_mat_to_vec();
 	};
 
 	struct Trainer {
@@ -91,8 +95,8 @@ namespace tisaNET {
 		void Create_Comvolute_Layer(int row, int column, std::vector<std::vector<double>>& filter, int stride);
 		*/
 		//フィルター指定なし
-		void Create_Comvolute_Layer(int input_shape[2], int filter_shape[3], int filter_num);
-		void Create_Comvolute_Layer(int input_shape[2], int filter_shape[3], int filter_num,int stride);
+		void Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int filter_num);
+		void Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int filter_num,int stride);
 
 
 		//入力層(最初の層のこと)にネットワークへの入力をいれる
@@ -107,9 +111,14 @@ namespace tisaNET {
 				std::vector<double> input = tisaMat::vector_cast<double>(data);
 				if (net_layer.front().Activation_f == COMVOLUTE) {
 					net_layer.front().comvolute(input);
-					for (int i = 1;net_layer[i].Activation_f == COMVOLUTE;i++) {
-						net_layer[i].comvolute(net_layer[i-1].Output);
+					//vectorからmatrixへ
+					net_layer.front().output_vec_to_mat();
+					int i = 1;
+					for (;net_layer[i].Activation_f == COMVOLUTE;i++) {
+						net_layer[i].comvolute(*(net_layer[i-1].Output_mat));
 					}
+					//畳み込み最終段でvectorになおす
+					net_layer[i-1].output_mat_to_vec();
 				}
 				else if (net_layer.front().Activation_f == INPUT) {
 					net_layer.front().Output = input;
