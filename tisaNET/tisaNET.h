@@ -91,8 +91,8 @@ namespace tisaNET {
 		void Create_Comvolute_Layer(int row, int column, std::vector<std::vector<double>>& filter, int stride);
 		*/
 		//フィルター指定なし
-		void Create_Comvolute_Layer(int row, int column, int filter_row, int filter_col,int depth, int filter_num);
-		void Create_Comvolute_Layer(int row, int column, int filter_row, int filter_col,int depth, int filter_num,int stride);
+		void Create_Comvolute_Layer(int input_shape[2], int filter_shape[3], int filter_num);
+		void Create_Comvolute_Layer(int input_shape[2], int filter_shape[3], int filter_num,int stride);
 
 
 		//入力層(最初の層のこと)にネットワークへの入力をいれる
