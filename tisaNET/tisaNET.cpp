@@ -473,39 +473,39 @@ namespace tisaNET{
         net_layer.push_back(tmp);
     }
     */
-    void Model::Create_Comvolute_Layer(int row, int column, int filter_row, int filter_col,int dpt,int f_num) {
+    void Model::Create_Comvolute_Layer(int input_shape[3], int filter_shape[3],int f_num) {
         layer tmp;
         tmp.Activation_f = COMVOLUTE;
-        tmp.dim2_RC[0] = row;
-        tmp.dim2_RC[1] = column;
-        tmp.node = row * column;
+        tmp.dim2_RC[0] = input_shape[0];
+        tmp.dim2_RC[1] = input_shape[1];
+        tmp.node = input_shape[0] * input_shape[1];
         tmp.filter_num = f_num;
-        tmp.W = new tisaMat::matrix(f_num, filter_row * filter_col * dpt);
-        tmp.filter_dim3[0] = filter_row;
-        tmp.filter_dim3[1] = filter_col;
-        tmp.filter_dim3[2] = dpt;
+        tmp.W = new tisaMat::matrix(f_num, filter_shape[0] * filter_shape[1] * filter_shape[2]);
+        tmp.filter_dim3[0] = filter_shape[0];
+        tmp.filter_dim3[1] = filter_shape[1];
+        tmp.filter_dim3[2] = filter_shape[2];
 
         //元サイズ、フィルター、(ストライド)、フィルター数が決まれば出力サイズ確定
-        tmp.Output = std::vector<double>((row - filter_row) * (column - filter_col) * f_num);
+        tmp.Output = std::vector<double>((input_shape[0] - filter_shape[0]) * (input_shape[1] - filter_shape[1]) * f_num);
         back_prop_offset++;
         comv_count++;
         net_layer.push_back(tmp);
     }
 
-    void Model::Create_Comvolute_Layer(int row, int column, int filter_row, int filter_col,int dpt, int f_num, int st) {
+    void Model::Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int f_num, int st) {
         layer tmp;
         tmp.Activation_f = COMVOLUTE;
-        tmp.dim2_RC[0] = row;
-        tmp.dim2_RC[1] = column;
-        tmp.node = row * column;
+        tmp.dim2_RC[0] = input_shape[0];
+        tmp.dim2_RC[1] = input_shape[1];
+        tmp.node = input_shape[0] * input_shape[1];
         tmp.filter_num = f_num;
-        tmp.W = new tisaMat::matrix(f_num, filter_row * filter_col * dpt);
-        tmp.filter_dim3[0] = filter_row;
-        tmp.filter_dim3[1] = filter_col;
-        tmp.filter_dim3[2] = dpt;
+        tmp.W = new tisaMat::matrix(f_num, filter_shape[0] * filter_shape[1] * filter_shape[2]);
+        tmp.filter_dim3[0] = filter_shape[0];
+        tmp.filter_dim3[1] = filter_shape[1];
+        tmp.filter_dim3[2] = filter_shape[2];
         tmp.stride = st;
         //元サイズ、フィルター、ストライド、フィルター数が決まれば出力サイズ確定
-        tmp.Output = std::vector<double>(((row - filter_row) / st) * ((column - filter_col) / st) * f_num);
+        tmp.Output = std::vector<double>(((input_shape[0] - filter_shape[0]) / st) * ((input_shape[1] - filter_shape[1]) / st) * f_num);
         back_prop_offset++;
         comv_count++;
         net_layer.push_back(tmp);
@@ -983,9 +983,14 @@ namespace tisaNET{
 
         for (int current_layer = 0; current_layer < layer;current_layer++) {
             if (Activation_f[current_layer] == COMVOLUTE) {
+                int input[2] = { dim2_tmp[current_layer][0],dim2_tmp[current_layer][1] };
+                int filter[3] = { filter_tmp[current_layer][0], filter_tmp[current_layer][1], filter_tmp[current_layer][2] };
+                Create_Comvolute_Layer(input,filter,fnum_tmp[current_layer], stride_tmp[current_layer]);
+                /*
                 Create_Comvolute_Layer(dim2_tmp[current_layer][0], dim2_tmp[current_layer][1],
                                        filter_tmp[current_layer][0], filter_tmp[current_layer][1],
                                        filter_tmp[current_layer][2],fnum_tmp[current_layer],stride_tmp[current_layer]);
+                */
             }else{
                 Create_Layer(node[current_layer], Activation_f[current_layer]);
             }
