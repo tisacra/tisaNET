@@ -27,6 +27,8 @@
 
 namespace tisaNET {
 
+	static const char* Af_name[7] = { "SIGMOID","RELU","STEP","SOFTMAX","INPUT","COMVOLUTE","NORMALINE" };
+
 	struct Data_set {
 		std::vector<std::vector<double>> data;
 		std::vector<std::vector<uint8_t>> answer;
@@ -50,6 +52,7 @@ namespace tisaNET {
 		tisaMat::matrix* Output_mat = nullptr;
 		void comvolute(std::vector<double>& input);
 		void comvolute(tisaMat::matrix& input);
+		void comvolute_test(tisaMat::matrix& input);
 		void output_vec_to_mat();
 		void output_mat_to_vec();
 	};
@@ -95,7 +98,7 @@ namespace tisaNET {
 		void Create_Comvolute_Layer(int row, int column, std::vector<std::vector<double>>& filter, int stride);
 		*/
 		//フィルター指定なし
-		void Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int filter_num);
+		//void Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int filter_num);
 		void Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int filter_num,int stride);
 
 
@@ -111,6 +114,13 @@ namespace tisaNET {
 				std::vector<double> input = tisaMat::vector_cast<double>(data);
 				if (net_layer.front().Activation_f == COMVOLUTE) {
 					net_layer.front().comvolute(input);
+
+					/*デバッグ用
+					std::vector<std::vector<double>> testinputV = { {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25} };
+					tisaMat::matrix testinput(testinputV);
+					net_layer.front().comvolute_test(testinput);
+					*/
+
 					//vectorからmatrixへ
 					net_layer.front().output_vec_to_mat();
 					int i = 1;
