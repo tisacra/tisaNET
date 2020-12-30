@@ -61,6 +61,7 @@ namespace tisaNET {
 		tisaMat::matrix* dW = nullptr;
 		std::vector<double> dB;
 		std::vector<std::vector<double>> Y;
+		std::vector<tisaMat::matrix> Y_mat;
 	};
 
 	//MNISTÇ©ÇÁÉfÅ[É^ÇçÏÇÈ
@@ -206,8 +207,7 @@ namespace tisaNET {
 		double (*Ef[2])(std::vector<std::vector<uint8_t>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
 		double (*Af[4])(double) = { sigmoid,ReLU,step,softmax };
 		void m_a(std::vector<std::vector<double>>& output, std::vector<std::vector<uint8_t>>& answer, uint8_t error_func);
-		void B_propagate2(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer, double lr, tisaMat::matrix& input_batch);
-
+		
 	};
 
 	void show_train_progress(int total_iteration,int now_iteration);
