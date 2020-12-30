@@ -490,7 +490,7 @@ namespace tisaNET{
         //元サイズ、フィルター、ストライド、フィルター数が決まれば出力サイズ確定
         tmp.Output = std::vector<double>(((input_shape[0] + 1 - filter_shape[0]) / st) * ((input_shape[1] + 1 - filter_shape[1]) / st) * (input_shape[2] / filter_shape[2]) * f_num);
         tmp.Output_mat = new tisaMat::matrix(f_num * (input_shape[2] / filter_shape[2]), ((input_shape[0] + 1 - filter_shape[0]) / st) * ((input_shape[1] + 1 - filter_shape[1]) / st));
-        back_prop_offset++;
+        //back_prop_offset++;
         comv_count++;
         net_layer.push_back(tmp);
     }
@@ -659,6 +659,7 @@ namespace tisaNET{
             }
         }
     }
+
     void layer::output_mat_to_vec() {
         for (int r = 0; r < Output_mat->mat_RC[0]; r++) {
             for (int c = 0; c < Output_mat->mat_RC[1]; c++) {
@@ -672,7 +673,7 @@ namespace tisaNET{
         tisaMat::matrix output_matrix(sample_size, net_layer.back().Output.size());
         for (int data_index = 0;data_index < sample_size;data_index++) {
             input_data(Input_data.elements[data_index]);
-            for (int i = back_prop_offset; i < number_of_layer(); i++) {
+            for (int i = back_prop_offset + comv_count; i < number_of_layer(); i++) {
                 std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
                 X = tisaMat::vector_add(X, net_layer[i].B);
                 //ソフトマックス関数を使うときはまず最大値を全部から引く
@@ -709,7 +710,7 @@ namespace tisaNET{
         int layer_num = number_of_layer();
         for (int data_index = 0; data_index < sample_size; data_index++) {
             input_data(Input_data.elements[data_index]);
-            for (int i = back_prop_offset; i < layer_num; i++) {
+            for (int i = back_prop_offset + comv_count; i < layer_num; i++) {
                 std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
                 X = tisaMat::vector_add(X, net_layer[i].B);
                 //ここまでで、活性化関数を使う前の計算が終了
@@ -737,7 +738,7 @@ namespace tisaNET{
                     tisaMat::vector_multiscalar(net_layer[i].Output, 1.0 / sigma);
                 }
 
-                trainer[i - back_prop_offset].Y[data_index] = net_layer[i].Output;
+                trainer[i].Y[data_index] = net_layer[i].Output;
             }
             output_matrix.elements[data_index] = net_layer.back().Output;
         }
@@ -802,7 +803,7 @@ namespace tisaNET{
             std::vector<std::vector<double>> tmp(1, error_matrix.elements[batch_segment]);
             tisaMat::matrix propagate_matrix(tmp);
             bool reduction_flag = cross_sig_flag;
-            for (int current_layer = net_layer.size() - 1; current_layer >= back_prop_offset; current_layer--) {
+            for (int current_layer = net_layer.size() - 1; current_layer >= back_prop_offset + comv_count; current_layer--) {
                 int trainer_layer = current_layer - back_prop_offset;
                 
                 //秘伝のたれを仕込む(伝播する行列)
@@ -853,7 +854,7 @@ namespace tisaNET{
                 //今の層の重み、バイアスの更新量を計算する
                     //重みは順伝播のときの入力も使う
                 tisaMat::matrix W_tmp(0,0);
-                if((trainer_layer) > 0){
+                if((trainer_layer) > back_prop_offset + comv_count){
                     W_tmp = tisaMat::vector_to_matrix(trainer[trainer_layer - 1].Y[batch_segment]);//trainer_layer-1のトレーナーは、前の層のトレーナー
                     W_tmp = tisaMat::matrix_transpose(W_tmp);
                     W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
@@ -866,12 +867,20 @@ namespace tisaNET{
                 }
                 
                 *(trainer[trainer_layer].dW) = tisaMat::matrix_add(*trainer[trainer_layer].dW,W_tmp);
-                    //バイアス
+                //バイアス
                 trainer[trainer_layer].dB = tisaMat::vector_add(trainer[trainer_layer].dB,propagate_matrix.elements[0]);
 
                 //今の層の重みの転置行列を秘伝のたれのうしろから行列積で次の層へ
                 W_tmp = tisaMat::matrix_transpose(*(net_layer[current_layer].W));
                 propagate_matrix = tisaMat::matrix_multiply(propagate_matrix, W_tmp);
+            }
+
+            //ここから畳み込み層の更新
+            for (int current_layer = comv_count-1; current_layer > 0;current_layer--) {
+                for (int current_filter = 0; current_filter < net_layer[current_layer].filter_num;current_filter++) {
+                    for (int current_X = 0; current_X < (net_layer[current_layer].input_dim3[2] / net_layer[current_layer].filter_dim3[2]);current_X++) {
+                    }
+                }
             }
         }
 
@@ -884,101 +893,6 @@ namespace tisaNET{
         }
 
     }
-    /*
-    //ごちゃごちゃ変えて実験する用
-    void Model::B_propagate2(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer, double lr, tisaMat::matrix& input_batch) {
-        int output_num = output.mat_RC[1];
-        int batch_size = output.mat_RC[0];
-        bool isMCE = (error_func == CROSS_ENTROPY_ERROR) && (output_num > 1);
-        //初回限定で誤差をセットして学習率もかける
-
-        tisaMat::matrix error_matrix(teacher);
-        error_matrix = tisaMat::matrix_subtract(output, error_matrix);
-        //printf("error_matrix for propagate\n");
-        //error_matrix.show();
-
-        error_matrix.multi_scalar(lr);
-
-        //ほんとは出力層の微分は特別扱いで計算したい
-
-
-        //重みとかの更新量を求める前にリフレッシュ
-        for (int current_layer = 0; current_layer < net_layer.size() - back_prop_offset; current_layer++) {
-            trainer[current_layer].dW->multi_scalar(0);
-            tisaMat::vector_multiscalar(trainer[current_layer].dB, 0);
-        }
-
-        //重みとかの更新量の平均を出す 具体的にはバッチのパターンごとに更新量を出して、あとでバッチサイズで割る
-        for (int batch_segment = 0; batch_segment < batch_size; batch_segment++) {
-
-            //伝播していく行列(秘伝のたれ) あとで行列積をつかいたいのでベクトルではなく行列として用意します(アダマール積もつかいますが)
-            std::vector<std::vector<double>> tmp(1, error_matrix.elements[batch_segment]);
-            tisaMat::matrix propagate_matrix(tmp);
-
-            for (int current_layer = net_layer.size() - back_prop_offset; current_layer > 0; current_layer--) {
-                //秘伝のたれを仕込む(伝播する行列)
-                    //ノードごとの活性化関数の微分
-                tisaMat::matrix dAf(1, net_layer[current_layer].node);
-                switch (net_layer[current_layer].Activation_f) {
-                case SIGMOID:
-                    for (int i = 0; i < net_layer[current_layer].node; i++) {
-                        double Y = trainer[current_layer - 1].Y[batch_segment][i];
-                        dAf.elements[0][i] = Y * (1 - Y);
-                    }
-                    break;
-                case SOFTMAX:
-                    for (int i = 0; i < net_layer[current_layer].node; i++) {
-                        dAf.elements[0][i] = 1;
-                    }
-                    break;
-                case RELU:
-                    for (int i = 0; i < net_layer[current_layer].node; i++) {
-                        dAf.elements[0][i] = 1;
-                    }
-                    break;
-                case STEP:
-                    for (int i = 0; i < net_layer[current_layer].node; i++) {
-                        dAf.elements[0][i] = 1;
-                    }
-                    break;
-                }
-                //活性化関数の微分行列と秘伝のタレのアダマール積
-                propagate_matrix = tisaMat::Hadamard_product(dAf, propagate_matrix);
-
-                //今の層の重み、バイアスの更新量を計算する
-                    //重みは順伝播のときの入力も使う
-                tisaMat::matrix W_tmp(0, 0);
-                if ((current_layer - 1) > 0) {
-                    W_tmp = tisaMat::vector_to_matrix(trainer[current_layer - 2].Y[batch_segment]);//current_layer-2のトレーナーは、前の層のトレーナー
-                    W_tmp = tisaMat::matrix_transpose(W_tmp);
-                    W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
-                }
-                else {
-                    W_tmp = tisaMat::vector_to_matrix(input_batch.elements[batch_segment]);
-                    W_tmp = tisaMat::matrix_transpose(W_tmp);
-                    W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
-                }
-
-                *(trainer[current_layer - 1].dW) = tisaMat::matrix_add(*trainer[current_layer - 1].dW, W_tmp);
-                //バイアス
-                trainer[current_layer - 1].dB = tisaMat::vector_add(trainer[current_layer - 1].dB, propagate_matrix.elements[0]);
-
-                //今の層の重みの転置行列を秘伝のたれのうしろから行列積で次の層へ
-                W_tmp = tisaMat::matrix_transpose(*(net_layer[current_layer].W));
-                propagate_matrix = tisaMat::matrix_multiply(propagate_matrix, W_tmp);
-            }
-        }
-
-        //ミニバッチ学習の場合、重みとかの更新量を平均する
-        if (batch_size > 1) {
-            for (int i = 0; i < trainer.size(); i++) {
-                trainer[i].dW->multi_scalar(1.0 / batch_size);
-                tisaMat::vector_multiscalar(trainer[i].dB, 1.0 / batch_size);
-            }
-        }
-
-    }
-    */
 
     int Model::number_of_layer() {
         return net_layer.size();
@@ -1001,7 +915,7 @@ namespace tisaNET{
         }
 
         //最初の層は入力の分配とかにしかつかわないのでかくれ層から
-        for (int current_layer = back_prop_offset; current_layer < number_of_layer();current_layer++) {
+        for (int current_layer = back_prop_offset + comv_count; current_layer < number_of_layer();current_layer++) {
             int prev_nodes = net_layer[current_layer - 1].node;
             switch (net_layer[current_layer].Activation_f) {
             case SIGMOID://Xaivierの初期値
@@ -1282,11 +1196,19 @@ namespace tisaNET{
         std::vector<Trainer> trainer;
         for (int i=0; i < net_layer.size()-back_prop_offset; i++){
             Trainer tmp;
-            //1で初期化しないと、更新量計算するときに掛け算できなくなる
-            tmp.dW = new tisaMat::matrix(net_layer[i+ back_prop_offset].W->mat_RC[0], net_layer[i + back_prop_offset].W->mat_RC[1],1);
-            tmp.dB = std::vector<double>(net_layer[i + back_prop_offset].node,1);
-            for (int j = 0; j < batch_size;j++) {
-                tmp.Y.push_back(std::vector<double>(net_layer[i + back_prop_offset].node));
+            tmp.dW = new tisaMat::matrix(net_layer[i+ back_prop_offset].W->mat_RC[0], net_layer[i + back_prop_offset].W->mat_RC[1]);
+
+            if (net_layer[i].Activation_f != COMVOLUTE) {
+                tmp.dB = std::vector<double>(net_layer[i + back_prop_offset].node);
+                for (int j = 0; j < batch_size; j++) {
+                    tmp.Y.push_back(std::vector<double>(net_layer[i + back_prop_offset].node));
+                }
+            }
+            else {
+                tmp.dB = std::vector<double>(net_layer[i + back_prop_offset].filter_num);
+                for (int j = 0; j < batch_size; j++) {
+                    tmp.Y_mat.push_back(tisaMat::matrix(net_layer[i + back_prop_offset].Output_mat->mat_RC[0], net_layer[i + back_prop_offset].Output_mat->mat_RC[1]));
+                }
             }
             trainer.push_back(tmp);
         }
