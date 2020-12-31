@@ -85,6 +85,10 @@ namespace tisaNET {
 	//交差エントロピー関数
 	double cross_entropy_error(std::vector<std::vector<uint8_t>>& teacher, std::vector<std::vector<double>>& output);
 
+	tisaMat::matrix diliate(tisaMat::matrix &mat,uint8_t d);
+	
+	tisaMat::matrix zero_padding(tisaMat::matrix &mat,uint8_t p);
+
 	class Model {
 	public:
 

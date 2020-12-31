@@ -396,6 +396,34 @@ namespace tisaNET{
         return tmp;
     }
 
+    tisaMat::matrix diliate(tisaMat::matrix& mat, uint8_t d) {
+        int row = mat.mat_RC[0];
+        int col = mat.mat_RC[1];
+
+        tisaMat::matrix tmp((row * (d + 1) - d),(col * (d + 1) - d));
+        for (int i = 0; i < row;i++) {
+            for (int j = 0; j < col;j++) {
+                tmp.elements[i * (d + 1)][j * (d + 1)] = mat.elements[i][j];
+            }
+        }
+        return tmp;
+    }
+
+    tisaMat::matrix zero_padding(tisaMat::matrix& mat, uint8_t p) {
+        int row = mat.mat_RC[0];
+        int col = mat.mat_RC[1];
+
+        tisaMat::matrix tmp(row + (2 * p),col + (2 * p));
+        for (int i = 0; i < row; i++) {
+            for (int j = 0; j < col; j++) {
+                tmp.elements[i + p][j + p] = mat.elements[i][j];
+            }
+        }
+        return tmp;
+    
+    }
+
+
     void Model::Create_Layer(int nodes, uint8_t Activation) {
         layer tmp;
         if (Activation < INPUT) {
@@ -879,6 +907,8 @@ namespace tisaNET{
             for (int current_layer = comv_count-1; current_layer > 0;current_layer--) {
                 for (int current_filter = 0; current_filter < net_layer[current_layer].filter_num;current_filter++) {
                     for (int current_X = 0; current_X < (net_layer[current_layer].input_dim3[2] / net_layer[current_layer].filter_dim3[2]);current_X++) {
+                    
+                    
                     }
                 }
             }
