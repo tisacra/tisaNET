@@ -48,6 +48,9 @@ namespace tisaNET {
 		uint8_t stride = 1;
 		uint16_t input_dim3[3];
 		uint8_t filter_dim3[3];
+		uint16_t output_dim3[3];
+		uint8_t pad[2] = {0,0};
+		bool padding_flag = false;
 		uint8_t filter_num = 1;
 		tisaMat::matrix* Output_mat = nullptr;
 		void comvolute(std::vector<double>& input);
@@ -63,6 +66,47 @@ namespace tisaNET {
 		std::vector<std::vector<double>> Y;
 		std::vector<tisaMat::matrix> Y_mat;
 	};
+
+	template <typename T>
+	std::vector<tisaMat::matrix> comv_vect_to_mat(std::vector<double> input, T* shape) {
+		T row = shape[0];
+		T col = shape[1];
+		T dpt = shape[2];
+		T size2D = row * col;
+
+		std::vector<tisaMat::matrix> tmp(dpt,tisaMat::matrix(row,col));
+
+		for (int i = 0; i < dpt;i++) {
+			for (int j = 0; j < row;j++) {
+				for (int k = 0; k < col;k++) {
+					tmp[i].elements[j][k] = input[(i * size2D) + (j * col) + k];
+				}
+			}
+		}
+		return tmp;
+	}
+	
+	template <typename T>
+	tisaMat::matrix comv_vect_to_mat2D(std::vector<double> input, T* shape) {
+		T row = shape[0];
+		T col = shape[1];
+		T size2D = row * col;
+
+		tisaMat::matrix tmp(row, col);
+
+		for (int i = 0; i < row; i++) {
+			for (int j = 0; j < col; j++) {
+				tmp.elements[i][j] = input[(i * col) + j];
+			}
+		}
+		return tmp;
+	}
+
+	std::vector<double> comv_mat_to_vect(std::vector<tisaMat::matrix>& origin);
+
+	std::vector<double> comv_mat_to_vect2D(tisaMat::matrix& origin);
+
+	std::vector<double> comvolute(std::vector<tisaMat::matrix> input, std::vector<tisaMat::matrix> filter, uint16_t* input_dim3, uint16_t* filter_dim3,uint8_t stride);
 
 	//MNISTからデータを作る
 	void load_MNIST(const char* path,Data_set& train_data,Data_set& test_data, int sample_size,int test_size, bool single_output);
@@ -85,9 +129,11 @@ namespace tisaNET {
 	//交差エントロピー関数
 	double cross_entropy_error(std::vector<std::vector<uint8_t>>& teacher, std::vector<std::vector<double>>& output);
 
-	tisaMat::matrix diliate(tisaMat::matrix &mat,uint8_t d);
+	tisaMat::matrix dilate(tisaMat::matrix &mat,uint8_t d);
 	
-	tisaMat::matrix zero_padding(tisaMat::matrix &mat,uint8_t p);
+	tisaMat::matrix zero_padding(tisaMat::matrix &mat,uint8_t p,uint8_t q);
+
+	tisaMat::matrix zero_padding_half(tisaMat::matrix& mat, uint8_t p, uint8_t q);
 
 	class Model {
 	public:
@@ -105,6 +151,8 @@ namespace tisaNET {
 		//フィルター指定なし
 		//void Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int filter_num);
 		void Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int filter_num,int stride);
+		//input_shape[3]の代わりに前の層のoutput_dim3を参照
+		void Create_Comvolute_Layer(int filter_shape[3], int filter_num, int stride);
 
 
 		//入力層(最初の層のこと)にネットワークへの入力をいれる
@@ -134,6 +182,44 @@ namespace tisaNET {
 					}
 					//畳み込み最終段でvectorになおす
 					net_layer[i-1].output_mat_to_vec();
+					if ((net_layer[i-1].input_dim3[0] * net_layer[i - 1].input_dim3[1]) / (net_layer[i - 1].filter_dim3[0] / net_layer[i - 1].filter_dim3[1]) != 1) {
+						rasterized = true;
+					}
+				}
+				else if (net_layer.front().Activation_f == INPUT) {
+					net_layer.front().Output = input;
+				}
+			}
+		}
+
+		//訓練用入力
+		template <typename T>
+		void input_data(std::vector<T>& data, std::vector<Trainer> &trainer,int index) {
+			int input_num = data.size();
+			if (net_layer.front().node != input_num) {
+				printf("input error|!|\n");
+				exit(EXIT_FAILURE);
+			}
+			else {
+				std::vector<double> input = tisaMat::vector_cast<double>(data);
+				if (net_layer.front().Activation_f == COMVOLUTE) {
+					net_layer.front().comvolute(input);
+					/*デバッグ用
+					std::vector<std::vector<double>> testinputV = { {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25} };
+					tisaMat::matrix testinput(testinputV);
+					net_layer.front().comvolute_test(testinput);
+					*/
+
+					//vectorからmatrixへ
+					net_layer.front().output_vec_to_mat();
+					trainer.front().Y_mat[index] = *(net_layer.front().Output_mat);
+					int i = 1;
+					for (; net_layer[i].Activation_f == COMVOLUTE; i++) {
+						net_layer[i].comvolute(*(net_layer[i - 1].Output_mat));
+						trainer[i].Y_mat[index] = *(net_layer[i].Output_mat);
+					}
+					//畳み込み最終段でvectorになおす
+					net_layer[i - 1].output_mat_to_vec();
 				}
 				else if (net_layer.front().Activation_f == INPUT) {
 					net_layer.front().Output = input;
@@ -208,10 +294,11 @@ namespace tisaNET {
 		uint8_t comv_count = 0;
 		std::string log_filename;
 		std::vector<layer> net_layer;
+		bool rasterized = false;
 		double (*Ef[2])(std::vector<std::vector<uint8_t>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
 		double (*Af[4])(double) = { sigmoid,ReLU,step,softmax };
 		void m_a(std::vector<std::vector<double>>& output, std::vector<std::vector<uint8_t>>& answer, uint8_t error_func);
-		
+		std::vector<std::vector<double>> b_p_decomv(tisaMat::matrix input, std::vector<tisaMat::matrix> filter);
 	};
 
 	void show_train_progress(int total_iteration,int now_iteration);
