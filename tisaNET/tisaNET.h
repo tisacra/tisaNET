@@ -219,7 +219,8 @@ namespace tisaNET {
 						trainer[i].Y_mat[index] = *(net_layer[i].Output_mat);
 					}
 					//ô‚İ‚İÅI’i‚Åvector‚É‚È‚¨‚·
-					net_layer[i - 1].output_mat_to_vec();
+					net_layer[i - 1 + back_prop_offset].output_mat_to_vec();
+					trainer[i - 1].Y[index] = comv_mat_to_vect2D(trainer[i - 1].Y_mat[index]);
 				}
 				else if (net_layer.front().Activation_f == INPUT) {
 					net_layer.front().Output = input;
