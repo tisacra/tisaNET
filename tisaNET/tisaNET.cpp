@@ -396,7 +396,7 @@ namespace tisaNET{
         return tmp;
     }
 
-    tisaMat::matrix diliate(tisaMat::matrix& mat, uint8_t d) {
+    tisaMat::matrix dilate(tisaMat::matrix& mat, uint8_t d) {
         int row = mat.mat_RC[0];
         int col = mat.mat_RC[1];
 
@@ -409,20 +409,31 @@ namespace tisaNET{
         return tmp;
     }
 
-    tisaMat::matrix zero_padding(tisaMat::matrix& mat, uint8_t p) {
+    tisaMat::matrix zero_padding(tisaMat::matrix& mat, uint8_t p,uint8_t q) {
         int row = mat.mat_RC[0];
         int col = mat.mat_RC[1];
 
         tisaMat::matrix tmp(row + (2 * p),col + (2 * p));
         for (int i = 0; i < row; i++) {
             for (int j = 0; j < col; j++) {
-                tmp.elements[i + p][j + p] = mat.elements[i][j];
+                tmp.elements[i + p][j + q] = mat.elements[i][j];
             }
         }
         return tmp;
-    
     }
 
+    tisaMat::matrix zero_padding_half(tisaMat::matrix& mat, uint8_t p, uint8_t q) {
+        int row = mat.mat_RC[0];
+        int col = mat.mat_RC[1];
+
+        tisaMat::matrix tmp(row + p, col + p);
+        for (int i = 0; i < row; i++) {
+            for (int j = 0; j < col; j++) {
+                tmp.elements[i][j] = mat.elements[i][j];
+            }
+        }
+        return tmp;
+    }
 
     void Model::Create_Layer(int nodes, uint8_t Activation) {
         layer tmp;
@@ -462,45 +473,6 @@ namespace tisaNET{
         net_layer.push_back(tmp);
     }
 
-    //フィルター指定(保留)
-    /*
-    void Model::Create_Comvolute_Layer(int row, int column, std::vector<std::vector<double>>& filter) {
-        layer tmp;
-        tmp.Activation_f = COMVOLUTE;
-        tmp.input_dim3[0] = row;
-        tmp.input_dim3[1] = column;
-        uint8_t filter_row = filter.size();
-        uint8_t filter_column = filter[0].size();
-        tmp.node = row * column;
-        tmp.filter = new tisaMat::matrix(filter);
-        tmp.filter_RC[0] = filter.size();
-        tmp.filter_RC[1] = filter[0].size();
-        //元サイズ、フィルター、(ストライド)が決まれば出力サイズ確定
-        tmp.Output = std::vector<double>((row - filter_row)*(column - filter_column));
-        back_prop_offset++;
-        comv_count++;
-        net_layer.push_back(tmp);
-    }
-    void Model::Create_Comvolute_Layer(int row, int column, std::vector<std::vector<double>>& filter, int st) {
-        layer tmp;
-        tmp.Activation_f = COMVOLUTE;
-        tmp.input_dim3[0] = row;
-        tmp.input_dim3[1] = column;
-        uint8_t filter_row = filter.size();
-        uint8_t filter_column = filter[0].size();
-        tmp.node = row * column;
-        tmp.filter = new tisaMat::matrix(filter);
-        tmp.filter_RC[0] = filter.size();
-        tmp.filter_RC[1] = filter[0].size();
-        tmp.stride = st;
-        //元サイズ、フィルター、ストライドが決まれば出力サイズ確定
-        tmp.Output = std::vector<double>((row - filter_row) / st * (column - filter_column) / st);
-        back_prop_offset++;
-        comv_count++;
-        net_layer.push_back(tmp);
-    }
-    */
-
     void Model::Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int f_num, int st) {
         layer tmp;
         tmp.Activation_f = COMVOLUTE;
@@ -515,9 +487,85 @@ namespace tisaNET{
         tmp.filter_dim3[1] = filter_shape[1];
         tmp.filter_dim3[2] = filter_shape[2];
         tmp.stride = st;
+
+        //入力よりフィルタが小さいかチェック
+        bool size_check = false;
+        for (int i = 0; i < 3; i++) {
+            if (tmp.input_dim3[i] < tmp.filter_dim3[i]) {
+                size_check = true;
+            }
+        }
+        if (size_check) {
+            printf("|!|ERROR|!| filter size is bigger than input!\n");
+            printf("filter : ( %4d, %4d , %4d) , input : ( %4d, %4d , %4d)\n", tmp.filter_dim3[0], tmp.filter_dim3[1], tmp.filter_dim3[2],
+                tmp.input_dim3[0], tmp.input_dim3[1], tmp.input_dim3[2]);
+            exit(EXIT_FAILURE);
+        }
+
+        //paddingサイズきめる(ハーフパディング)
+        tmp.pad[0] = (((input_shape[0] - filter_shape[0]) / st + 1) * st - (input_shape[0] - filter_shape[0])) % st;
+        tmp.pad[1] = (((input_shape[1] - filter_shape[1]) / st + 1) * st - (input_shape[1] - filter_shape[1])) % st;
+
+        if (tmp.pad[0] != 0 || tmp.pad[1] != 0) {
+            tmp.padding_flag = true;
+        }
+
         //元サイズ、フィルター、ストライド、フィルター数が決まれば出力サイズ確定
-        tmp.Output = std::vector<double>(((input_shape[0] + 1 - filter_shape[0]) / st) * ((input_shape[1] + 1 - filter_shape[1]) / st) * (input_shape[2] / filter_shape[2]) * f_num);
-        tmp.Output_mat = new tisaMat::matrix(f_num * (input_shape[2] / filter_shape[2]), ((input_shape[0] + 1 - filter_shape[0]) / st) * ((input_shape[1] + 1 - filter_shape[1]) / st));
+        tmp.output_dim3[0] = (input_shape[0] - filter_shape[0] + tmp.pad[0]) / st + 1;
+        tmp.output_dim3[1] = (input_shape[1] - filter_shape[1] + tmp.pad[1]) / st + 1;
+        tmp.output_dim3[2] = (input_shape[2] / filter_shape[2]) * f_num;
+
+        tmp.Output = std::vector<double>(tmp.output_dim3[0] * tmp.output_dim3[1] * tmp.output_dim3[2]);
+        tmp.Output_mat = new tisaMat::matrix(tmp.output_dim3[2], (tmp.output_dim3[0] * tmp.output_dim3[1]));
+        //back_prop_offset++;
+        comv_count++;
+        net_layer.push_back(tmp);
+    }
+
+    void Model::Create_Comvolute_Layer(int filter_shape[3], int f_num, int st) {
+        layer tmp;
+        tmp.Activation_f = COMVOLUTE;
+        tmp.input_dim3[0] = net_layer.back().output_dim3[0];
+        tmp.input_dim3[1] = net_layer.back().output_dim3[1];
+        tmp.input_dim3[2] = net_layer.back().output_dim3[2];
+        tmp.node = net_layer.back().output_dim3[0] * net_layer.back().output_dim3[1];
+        tmp.filter_num = f_num;
+        tmp.W = new tisaMat::matrix(f_num, filter_shape[0] * filter_shape[1] * filter_shape[2]);
+        tmp.B = std::vector<double>(f_num);
+        tmp.filter_dim3[0] = filter_shape[0];
+        tmp.filter_dim3[1] = filter_shape[1];
+        tmp.filter_dim3[2] = filter_shape[2];
+        tmp.stride = st;
+
+        //入力よりフィルタが小さいかチェック
+        bool size_check = false;
+        for (int i = 0; i < 3; i++) {
+            if (tmp.input_dim3[i] < tmp.filter_dim3[i]) {
+                size_check = true;
+            }
+        }
+        if (size_check) {
+            printf("|!|ERROR|!| filter size is bigger than input!\n");
+            printf("filter : ( %4d, %4d , %4d) , input : ( %4d, %4d , %4d)\n",tmp.filter_dim3[0], tmp.filter_dim3[1], tmp.filter_dim3[2],
+                                                                              tmp.input_dim3[0], tmp.input_dim3[1], tmp.input_dim3[2]);
+            exit(EXIT_FAILURE);
+        }
+
+        //paddingサイズきめる(ハーフパディング)
+        tmp.pad[0] = (((net_layer.back().output_dim3[0] - filter_shape[0]) / st + 1) * st - (net_layer.back().output_dim3[0] - filter_shape[0])) % st;
+        tmp.pad[1] = (((net_layer.back().output_dim3[1] - filter_shape[1]) / st + 1) * st - (net_layer.back().output_dim3[1] - filter_shape[1])) % st;
+
+        if (tmp.pad[0] != 0 || tmp.pad[1] != 0) {
+            tmp.padding_flag = true;
+        }
+
+        //元サイズ、フィルター、ストライド、フィルター数が決まれば出力サイズ確定
+        tmp.output_dim3[0] = (net_layer.back().output_dim3[0] - filter_shape[0] + tmp.pad[0]) / st + 1;
+        tmp.output_dim3[1] = (net_layer.back().output_dim3[1] - filter_shape[1] + tmp.pad[1]) / st + 1;
+        tmp.output_dim3[2] = (net_layer.back().output_dim3[2] / filter_shape[2]) * f_num;
+
+        tmp.Output = std::vector<double>(tmp.output_dim3[0] * tmp.output_dim3[1] * tmp.output_dim3[2]);
+        tmp.Output_mat = new tisaMat::matrix(tmp.output_dim3[2], (tmp.output_dim3[0] * tmp.output_dim3[1]));
         //back_prop_offset++;
         comv_count++;
         net_layer.push_back(tmp);
@@ -532,15 +580,29 @@ namespace tisaNET{
         uint8_t filter_column = filter_dim3[1];
         uint8_t dpt = filter_dim3[2];
         uint8_t f_num = filter_num;
-        uint16_t route_row = (row + 1 - filter_row) / stride;
-        uint16_t route_col = (column + 1 - filter_column) / stride;
+        uint16_t route_row = output_dim3[0];
+        uint16_t route_col = output_dim3[1];
         uint16_t filter_size2D = filter_row * filter_column;
-        uint16_t feature_size = row * column;
+        uint16_t feature_size = (row + pad[0]) * (column + pad[1]);
         double sum_max = 0.;
 
+        std::vector<double> input_use;
+        //必要ならハーフパディング
+        if (padding_flag) {
+            uint16_t origin_shape[3] = {row,column,dpt};
+            std::vector<tisaMat::matrix> tmp_mat = comv_vect_to_mat(input,origin_shape);
+            for (int i = 0; i < dpt;i++) {
+                tmp_mat[i] = zero_padding_half(tmp_mat[i], pad[0], pad[1]);
+            }
+            input_use = comv_mat_to_vect(tmp_mat);
+        }
+        else {
+            input_use = input;
+        }
+
         //畳み込みできるかチェック
-        if (feature_size * dpt != input.size()) {
-            printf("input shape incorrect|!| input : %4d setting : ( %4d, %4d) * %3d\n",input.size(),row,column,dpt);
+        if (feature_size * dpt != input_use.size()) {
+            printf("input shape incorrect|!| input : %4d setting : ( %4d, %4d) * %3d\n",input_use.size(),row,column,dpt);
             exit(EXIT_FAILURE);
         }
 
@@ -552,7 +614,7 @@ namespace tisaNET{
                     for (int c_f_dpt = 0; c_f_dpt < dpt;c_f_dpt++) {
                         for (int i = 0; i < filter_row; i++) {
                             for (int j = 0; j < filter_column; j++) {
-                                tmp_sum += W->elements[c_f][(c_f_dpt * filter_size2D) + i * filter_column + j] * input[(c_f_dpt * feature_size) + ((i + base_row * stride) * input_dim3[1]) + (j + base_col * stride)];
+                                tmp_sum += W->elements[c_f][(c_f_dpt * filter_size2D) + i * filter_column + j] * input_use[(c_f_dpt * feature_size) + ((i + base_row * stride) * input_dim3[1]) + (j + base_col * stride)];
                                 
                             }
                         }
@@ -579,16 +641,31 @@ namespace tisaNET{
         uint8_t filter_column = filter_dim3[1];
         uint8_t dpt = filter_dim3[2];
         uint8_t f_num = filter_num;
-        uint16_t route_row = (row + 1 - filter_row) / stride;
-        uint16_t route_col = (column + 1 - filter_column) / stride;
+        uint16_t route_row = output_dim3[0];
+        uint16_t route_col = output_dim3[1];
         uint16_t route_dpt = input_dim3[2] / filter_dim3[2];
         uint16_t filter_size2D = filter_row * filter_column;
-        uint16_t feature_size = row * column;
+        uint16_t feature_size = (row + pad[0]) * (column + pad[1]);
         double sum_max = 0.;
 
+        tisaMat::matrix input_use(route_dpt,feature_size);
+        //必要ならハーフパディング
+        if (padding_flag) {
+            uint16_t origin_shape[2] = {row,column};
+
+            for (int i = 0; i < dpt; i++) {
+                tisaMat::matrix tmp_mat = comv_vect_to_mat2D(input.elements[i], origin_shape);
+                tmp_mat = zero_padding_half(tmp_mat, pad[0], pad[1]);
+                input_use.elements[i] = comv_mat_to_vect2D(tmp_mat);
+            }
+        }
+        else {
+            input_use = input;
+        }
+
         //畳み込みできるかチェック
-        if ((feature_size != input.mat_RC[1]) || (input.mat_RC[0] != route_dpt)) {
-            printf("input shape incorrect|!| input( row * column , feature map number) : ( %4d , %4d) setting : ( %4d, %4d ,%4d) * %3d\n",input.mat_RC[1],input.mat_RC[0],row,column,dpt,f_num);
+        if ((feature_size != input_use.mat_RC[1]) || (input_use.mat_RC[0] != route_dpt)) {
+            printf("input shape incorrect|!| input( row * column , feature map number) : ( %4d , %4d) setting : ( %4d, %4d ,%4d) * %3d\n",input_use.mat_RC[1],input_use.mat_RC[0],row,column,dpt,f_num);
             exit(EXIT_FAILURE);
         }
 
@@ -602,7 +679,7 @@ namespace tisaNET{
                             for (int i = 0; i < filter_row; i++) {
                                 for (int j = 0; j < filter_column; j++) {
                                     tmp_sum += W->elements[c_f][(c_f_dpt * filter_size2D) + i * filter_column + j]
-                                               * input.elements[current_map][(c_f_dpt * feature_size) + ((i + base_row * stride) * input_dim3[1]) + (j + base_col * stride)];
+                                               * input_use.elements[current_map][(c_f_dpt * feature_size) + ((i + base_row * stride) * input_dim3[1]) + (j + base_col * stride)];
                                 }
                             }
                         }
@@ -737,7 +814,8 @@ namespace tisaNET{
         tisaMat::matrix output_matrix(sample_size, net_layer.back().Output.size());
         int layer_num = number_of_layer();
         for (int data_index = 0; data_index < sample_size; data_index++) {
-            input_data(Input_data.elements[data_index]);
+            input_data(Input_data.elements[data_index],trainer,data_index);
+
             for (int i = back_prop_offset + comv_count; i < layer_num; i++) {
                 std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
                 X = tisaMat::vector_add(X, net_layer[i].B);
@@ -800,23 +878,6 @@ namespace tisaNET{
         error_matrix.multi_scalar(lr);
 
         //ほんとは出力層の微分は特別扱いで計算したい
-
-        //畳み込み層の仕組み上入力バッチを仮バッチに代替する(畳み込んだバッチ(トレーナーのデータでできそう)を入力バッチとして扱う)
-        tisaMat::matrix input_batch_use(0,0);
-        if (net_layer.front().Activation_f == COMVOLUTE) {
-            int i = 0;
-            for (; net_layer[i].Activation_f == COMVOLUTE;i++) {
-            }
-            std::vector<std::vector<double>> tmp_batch;
-            for (int j = 0; j < batch_size;j++) {
-                input_data(input_batch.elements[j]);
-                tmp_batch.push_back(net_layer[i-1].Output);
-            }
-            input_batch_use = tisaMat::matrix(tmp_batch);
-        }
-        else {
-            input_batch_use = input_batch;
-        }
 
         //重みとかの更新量を求める前にリフレッシュ
         for (int current_layer = 0; current_layer < net_layer.size() - back_prop_offset;current_layer++) {
@@ -888,9 +949,7 @@ namespace tisaNET{
                     W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
                 }
                 else {
-                    //畳み込みとの深刻な競合
-                    W_tmp = tisaMat::vector_to_matrix(input_batch_use.elements[batch_segment]);
-                    W_tmp = tisaMat::matrix_transpose(W_tmp);
+                    W_tmp = trainer[trainer_layer - 1].Y_mat[batch_segment];
                     W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
                 }
                 
@@ -903,14 +962,136 @@ namespace tisaNET{
                 propagate_matrix = tisaMat::matrix_multiply(propagate_matrix, W_tmp);
             }
 
-            //ここから畳み込み層の更新
-            for (int current_layer = comv_count-1; current_layer > 0;current_layer--) {
-                for (int current_filter = 0; current_filter < net_layer[current_layer].filter_num;current_filter++) {
-                    for (int current_X = 0; current_X < (net_layer[current_layer].input_dim3[2] / net_layer[current_layer].filter_dim3[2]);current_X++) {
-                    
-                    
+            //ここから畳み込み層の更新量計算
+
+            //もし全結合層手前で特徴マップ全部を一本にラスタライズされてたら、秘伝のタレ(層の出力の誤差)をマップ(ごとにラスタライズ)の形に直す
+            //もしじゃなくても一回はするかも
+            if (comv_count != 0) {
+                uint16_t size2D = net_layer[comv_count - 1].Output_mat->mat_RC[1];
+                uint16_t map_num = net_layer[comv_count - 1].Output_mat->mat_RC[0];
+                tisaMat::matrix tmp(map_num,size2D);
+
+                for (int i = 0; i < map_num;i++) {
+                    for (int j = 0; j < size2D;j++) {
+                        tmp.elements[i][j] = propagate_matrix.elements[0][(i * size2D) + j];
                     }
                 }
+                propagate_matrix = tmp;
+            }
+
+            for (int current_layer = comv_count-1; current_layer > back_prop_offset - 1;current_layer--) {
+                uint8_t st = net_layer[current_layer].stride;
+
+                uint16_t in_3d[3] = {net_layer[current_layer].input_dim3[0],
+                                     net_layer[current_layer].input_dim3[1],
+                                     net_layer[current_layer].input_dim3[2]};
+
+                //単発の入力サイズ
+                uint16_t in_segment_3d[3] = { net_layer[current_layer].input_dim3[0],
+                                              net_layer[current_layer].input_dim3[1],
+                                              net_layer[current_layer].filter_dim3[2] };
+
+                //dW計算のcomvolute用
+                uint16_t in_seg_3d[3] = { net_layer[current_layer].input_dim3[0] + net_layer[current_layer].pad[0],
+                                          net_layer[current_layer].input_dim3[1] + net_layer[current_layer].pad[1],
+                                          net_layer[current_layer].filter_dim3[2] };
+
+                uint8_t fil_3d[3] = { net_layer[current_layer].filter_dim3[0],
+                                      net_layer[current_layer].filter_dim3[1],
+                                      net_layer[current_layer].filter_dim3[2] };
+
+                //出力は単発では深さ1
+                uint16_t out_3d[3] = { net_layer[current_layer].output_dim3[0],
+                                       net_layer[current_layer].output_dim3[1],
+                                       1};
+
+                uint8_t fnum = net_layer[current_layer].filter_num;
+                uint16_t feature_num = (in_3d[2] / fil_3d[2]);
+
+                //次のpropagate_matrixの準備
+                tisaMat::matrix tmp_prop(in_3d[2],in_3d[0] * in_3d[1]);
+
+                for (int current_filter = 0; current_filter < fnum;current_filter++) {
+                    for (int current_X = 0; current_X < feature_num;current_X++) {
+                    //今の出力に対する更新量を計算
+                        //重み(フィルター)の更新量は入力を誤差で畳み込み
+                        std::vector<tisaMat::matrix> input;
+                        if (current_layer == back_prop_offset) {
+                            input = comv_vect_to_mat<uint16_t>(input_batch.elements[batch_segment], in_segment_3d);
+                        }
+                        else {
+                            input = comv_vect_to_mat<uint16_t>(trainer[current_layer - 1].Y_mat[batch_segment].elements[current_X], in_segment_3d);
+                        }
+                        
+                        //この層がパディングしていた層なら、同じように入力をパディング
+                        if (net_layer[current_layer].padding_flag) {
+                            for (int i = 0; i < in_segment_3d[2];i++) {
+                                input[i] = zero_padding_half(input[i],net_layer[current_layer].pad[0], net_layer[current_layer].pad[1]);
+                            }
+                        }
+
+                        std::vector<tisaMat::matrix> E = comv_vect_to_mat<uint16_t>(propagate_matrix.elements[(current_filter * feature_num) + current_X],out_3d);
+
+                        std::vector<tisaMat::matrix> E_for_dW;
+                        for (int i = 0; i < out_3d[2];i++) {
+                            E_for_dW.push_back(dilate(E[0], st - 1));
+                        }
+
+                        uint16_t EdW_3d[3] = {E_for_dW[0].mat_RC[0],E_for_dW[0].mat_RC[1],out_3d[2]};
+                        trainer[current_layer].dW->elements[current_filter] = tisaMat::vector_add(trainer[current_layer].dW->elements[current_filter],
+                                                                                                  comvolute(input,E_for_dW,in_seg_3d,EdW_3d,1));
+
+                        for (int row = 0; row < out_3d[0];row++) {
+                            for (int col = 0; col < out_3d[1];col++) {
+                                trainer[current_layer].dB[current_filter] += E[0].elements[row][col];
+                            }
+                        }
+                        trainer[current_layer].dB[current_filter] /= out_3d[0] * out_3d[1];
+
+                        if (current_layer == back_prop_offset) {
+                            break;
+                        }
+
+                        //ここから秘伝のタレつくる(今のレイヤーにとっての入力サイズのタレ)
+                        tisaMat::matrix tmp_E(0, 0);
+                        //誤差をstride-1でdilate
+                        if (st > 1) {
+                            tmp_E = dilate(E[0],st - 1);
+                        }
+                        else {
+                            tmp_E = E[0];
+                        }
+                        //tmp_Eをフィルターのサイズ-1でpadding
+                        if ((fil_3d[0] * fil_3d[1]) != 1) {
+                            tmp_E = zero_padding(tmp_E,fil_3d[0] - 1,fil_3d[1] - 1);
+                            //ハーフパディングが必要か判定
+                            uint8_t pad_p = in_3d[0] - ((tmp_E.mat_RC[0] - fil_3d[0]) + 1);
+                            uint8_t pad_q = in_3d[1] - ((tmp_E.mat_RC[1] - fil_3d[1]) + 1);
+
+                            if ((pad_p + pad_q) > 0) {
+                                tmp_E = zero_padding_half(tmp_E,pad_p,pad_q);
+                            }
+                        }
+                        //フィルターを縦横に反転
+                        std::vector<tisaMat::matrix> tmp_W(fil_3d[2],tisaMat::matrix(fil_3d[0],fil_3d[1]));
+                        uint16_t fil_size2D = fil_3d[0] * fil_3d[1];
+                        for (int i = 0; i < fil_3d[2];i++) {
+                            for (int j = 0; j < fil_3d[0];j++) {
+                                for (int k = 0; k < fil_3d[1];k++) {
+                                    tmp_W[i].elements[j][k] = net_layer[current_layer].W->elements[current_filter][((fil_3d[2] - i - 1) * fil_size2D) + ((fil_3d[1] - j - 1) * fil_3d[1]) + (fil_3d[0] - k - 1)];
+                                }
+                            }
+                        }
+                        //強制stride=1でtmp_Eをtmp_Wで畳み込み
+                        std::vector<std::vector<double>> tmp_propagate = b_p_decomv(tmp_E, tmp_W);
+                        //tmp_propにtmp_propagateを記録
+                        for (int d = 0; d < in_segment_3d[2];d++) {
+                            tmp_prop.elements[(current_X * in_segment_3d[2]) + d] = tisaMat::vector_add(tmp_prop.elements[(current_X * in_segment_3d[2]) + d],tmp_propagate[d]);
+                        }
+                    }
+                }
+                tisaMat::vector_multiscalar(trainer[current_layer].dB, 1.0 / feature_num);
+                propagate_matrix = tmp_prop;
             }
         }
 
@@ -921,7 +1102,6 @@ namespace tisaNET{
                 tisaMat::vector_multiscalar(trainer[i].dB,1.0 / batch_size);
             }
         }
-
     }
 
     int Model::number_of_layer() {
@@ -970,6 +1150,103 @@ namespace tisaNET{
                 }
             }
         }
+    }
+
+    std::vector<double> comv_mat_to_vect(std::vector<tisaMat::matrix>& origin){
+        uint16_t shape[3] = {origin[0].mat_RC[0],
+                             origin[0].mat_RC[1],
+                             origin.size()};
+
+        std::vector<double> tmp;
+        for (int i = 0; i < shape[2];i++) {
+            for (int j = 0; j < shape[0];j++) {
+                tmp.insert(tmp.end(),origin[i].elements[j].begin(), origin[i].elements[j].end());
+            }
+        }
+
+        return tmp;
+    }
+
+    std::vector<double> comv_mat_to_vect2D(tisaMat::matrix& origin) {
+        uint16_t shape[2] = { origin.mat_RC[0],
+                              origin.mat_RC[1]};
+
+        std::vector<double> tmp;
+        for (int j = 0; j < shape[0]; j++) {
+            tmp.insert(tmp.end(), origin.elements[j].begin(), origin.elements[j].end());
+        }
+        
+        return tmp;
+    }
+
+    std::vector<double> comvolute(std::vector<tisaMat::matrix> input, std::vector<tisaMat::matrix> filter,uint16_t *input_dim3,uint16_t *filter_dim3,uint8_t stride) {
+        double tmp_sum;
+        uint16_t row = input_dim3[0];
+        uint16_t column = input_dim3[1];
+        uint8_t filter_row = filter_dim3[0];
+        uint8_t filter_column = filter_dim3[1];
+        uint8_t dpt = filter_dim3[2];
+
+        //入力よりフィルタが小さいかチェック
+        bool size_check = false;
+        for (int i = 0; i < 3; i++) {
+            if (input_dim3[i] < filter_dim3[i]) {
+                size_check = true;
+            }
+        }
+        if (size_check) {
+            printf("|!|ERROR|!| filter size is bigger than input!\n");
+            printf("filter : ( %4d, %4d , %4d) , input : ( %4d, %4d , %4d)\n", filter_dim3[0], filter_dim3[1], filter_dim3[2],
+                input_dim3[0], input_dim3[1], input_dim3[2]);
+            exit(EXIT_FAILURE);
+        }
+
+        std::vector<tisaMat::matrix> input_use(input_dim3[2],tisaMat::matrix(row,column));
+        uint8_t pad_p = (((row - filter_row) / stride + 1) * stride - (row - filter_row)) % stride;
+        uint8_t pad_q = (((column - filter_column) / stride + 1) * stride - (column - filter_column)) % stride;
+        if (pad_p != 0 || pad_q != 0) {
+            for (int i = 0; i < input_dim3[2];i++) {
+                input_use[i] = zero_padding_half(input[i],pad_p,pad_q);
+            }
+        }
+        else {
+            for (int i = 0; i < input_dim3[2]; i++) {
+                input_use[i] = input[i];
+            }
+        }
+
+        uint16_t route_row = (row - filter_row + pad_p) / stride + 1;
+        uint16_t route_col = (column - filter_column + pad_q) / stride + 1;
+
+        uint16_t route_dpt = input_dim3[2] / filter_dim3[2];
+        uint16_t size2D = route_row * route_col;
+        double sum_max = 0.;
+
+        std::vector<double> tmp(route_row * route_col * route_dpt);
+
+        for (int current_map = 0; current_map < route_dpt; current_map++) {
+            for (int base_row = 0; base_row < route_row; base_row++) {
+                for (int base_col = 0; base_col < route_col; base_col++) {
+                    tmp_sum = 0.;
+                    //畳み込む(フィルターかける)
+                    for (int c_f_dpt = 0; c_f_dpt < dpt; c_f_dpt++) {
+                        for (int i = 0; i < filter_row; i++) {
+                            for (int j = 0; j < filter_column; j++) {
+                                tmp_sum += filter[c_f_dpt].elements[i][j]
+                                        * input_use[current_map].elements[i + base_row * stride][j + base_col * stride];
+                            }
+                        }
+                    }
+                    tmp[(size2D * current_map) + (base_row * route_col) + base_col] = tmp_sum;
+                    if (tmp_sum > sum_max) {
+                        sum_max = tmp_sum;
+                    }
+                }
+            }
+        }
+        //平均する
+        tisaMat::vector_multiscalar(tmp, 1. / sum_max);
+        return tmp;
     }
 
     void Model::load_model(const char* tp_file) {
@@ -1457,6 +1734,45 @@ namespace tisaNET{
             }
         }
         printf("accuracy : %d / %d\n",correct_count,total_size);
+    }
+
+    std::vector<std::vector<double>> tisaNET::Model::b_p_decomv(tisaMat::matrix input, std::vector<tisaMat::matrix> filter) {
+        double tmp_sum;
+        uint16_t row = input.mat_RC[0];
+        uint16_t column = input.mat_RC[1];
+        uint8_t filter_row = filter[0].mat_RC[0];
+        uint8_t filter_column = filter[0].mat_RC[1];
+        uint8_t dpt = filter.size();
+        uint16_t route_row = (row - filter_row) + 1;
+        uint16_t route_col = (column - filter_column) + 1;
+        uint16_t size2D = route_row * route_col;
+        //double sum_max = 0.;
+
+        std::vector<std::vector<double>> tmp(dpt,std::vector<double>(route_row * route_col));
+
+        for (int current_map = 0; current_map < dpt; current_map++) {
+            for (int base_row = 0; base_row < route_row; base_row++) {
+                for (int base_col = 0; base_col < route_col; base_col++) {
+                    tmp_sum = 0.;
+                    //畳み込む(フィルターかける)    誤差逆伝播ではチャンネル別、合計しない
+                    //for (int c_f_dpt = 0; c_f_dpt < dpt; c_f_dpt++) {
+                        for (int i = 0; i < filter_row; i++) {
+                            for (int j = 0; j < filter_column; j++) {
+                                tmp_sum += filter[current_map].elements[i][j]
+                                    * input.elements[i + base_row][j + base_col];
+                            }
+                        }
+                    //}
+                    tmp[current_map][(base_row * route_col) + base_col] = tmp_sum;
+                    //if (tmp_sum > sum_max) {
+                    //    sum_max = tmp_sum;
+                    //}
+                }
+            }
+        }
+        //平均する
+        //tisaMat::vector_multiscalar(tmp, 1. / sum_max);
+        return tmp;
     }
 
     void show_train_progress(int total_iteration, int now_iteration) {
