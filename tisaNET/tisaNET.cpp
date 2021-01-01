@@ -621,6 +621,7 @@ namespace tisaNET{
                     }
                     
                     tmp_sum += B[c_f];
+                    tmp_sum = sigmoid(tmp_sum);
                     Output[(c_f * route_row * route_col) + (base_row * route_col) + base_col] = tmp_sum;
                     if (tmp_sum > sum_max) {
                         sum_max = tmp_sum;
@@ -630,7 +631,7 @@ namespace tisaNET{
         }
 
         //平均する
-        tisaMat::vector_multiscalar(Output,1./sum_max);
+        //tisaMat::vector_multiscalar(Output,1./sum_max);
     }
 
     void layer::comvolute(tisaMat::matrix& input) {
@@ -684,6 +685,7 @@ namespace tisaNET{
                             }
                         }
                         tmp_sum += B[c_f];
+                        tmp_sum = sigmoid(tmp_sum);
                         Output_mat->elements[(c_f * route_dpt) + current_map][(base_row * route_col) + base_col] = tmp_sum;
                         if (tmp_sum > sum_max) {
                             sum_max = tmp_sum;
@@ -693,7 +695,7 @@ namespace tisaNET{
             }
         }
         //正規化する
-        Output_mat->multi_scalar(1. / sum_max);
+        //Output_mat->multi_scalar(1. / sum_max);
     }
 
     void layer::comvolute_test(tisaMat::matrix& input) {
@@ -844,7 +846,7 @@ namespace tisaNET{
                     tisaMat::vector_multiscalar(net_layer[i].Output, 1.0 / sigma);
                 }
 
-                trainer[i].Y[data_index] = net_layer[i].Output;
+                trainer[i-back_prop_offset].Y[data_index] = net_layer[i].Output;
             }
             output_matrix.elements[data_index] = net_layer.back().Output;
         }
@@ -943,14 +945,23 @@ namespace tisaNET{
                 //今の層の重み、バイアスの更新量を計算する
                     //重みは順伝播のときの入力も使う
                 tisaMat::matrix W_tmp(0,0);
-                if((trainer_layer) > back_prop_offset + comv_count){
+                if((current_layer) > back_prop_offset + comv_count){
                     W_tmp = tisaMat::vector_to_matrix(trainer[trainer_layer - 1].Y[batch_segment]);//trainer_layer-1のトレーナーは、前の層のトレーナー
                     W_tmp = tisaMat::matrix_transpose(W_tmp);
                     W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
                 }
                 else {
-                    W_tmp = trainer[trainer_layer - 1].Y_mat[batch_segment];
-                    W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
+                    if (net_layer[current_layer - 1].Activation_f == INPUT) {
+                        W_tmp = tisaMat::vector_to_matrix(input_batch.elements[batch_segment]);//trainer_layer-1のトレーナーは、前の層のトレーナー
+                        W_tmp = tisaMat::matrix_transpose(W_tmp);
+                        W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
+                    }
+                    else {
+                        W_tmp = tisaMat::vector_to_matrix(trainer[trainer_layer - 1].Y[batch_segment]);//trainer_layer-1のトレーナーは、前の層のトレーナー
+                        W_tmp = tisaMat::matrix_transpose(W_tmp);
+                        W_tmp = tisaMat::matrix_multiply(W_tmp, propagate_matrix);
+                    }
+
                 }
                 
                 *(trainer[trainer_layer].dW) = tisaMat::matrix_add(*trainer[trainer_layer].dW,W_tmp);
@@ -1031,6 +1042,17 @@ namespace tisaNET{
                         }
 
                         std::vector<tisaMat::matrix> E = comv_vect_to_mat<uint16_t>(propagate_matrix.elements[(current_filter * feature_num) + current_X],out_3d);
+
+                        //comvolute_layerの畳み込みにシグモイド関数を実装したので、その微分項を計算
+                        tisaMat::matrix tmp_dsig(out_3d[0],out_3d[1]);
+                        for (int i = 0; i < out_3d[0];i++) {
+                            for (int j = 0; j < out_3d[1];j++) {
+                                double tmp_Y = trainer[current_layer].Y_mat[batch_segment].elements[current_filter * feature_num + current_X][i * out_3d[1] + j];
+                                tmp_dsig.elements[i][j] = tmp_Y * (1 - tmp_Y);
+                            }
+                        }
+                        //秘伝のタレとシグモイド微分のアダマール積
+                        E[0] = tisaMat::Hadamard_product(E[0],tmp_dsig);
 
                         std::vector<tisaMat::matrix> E_for_dW;
                         for (int i = 0; i < out_3d[2];i++) {
@@ -1520,6 +1542,12 @@ namespace tisaNET{
             }
             trainer.push_back(tmp);
         }
+        if (comv_count > 0) {
+            for (int i = 0; i < batch_size;i++) {
+                trainer[comv_count - 1].Y.push_back(std::vector<double>(net_layer[comv_count - 1 + back_prop_offset].Output_mat->mat_RC[0] * net_layer[comv_count - 1 + back_prop_offset].Output_mat->mat_RC[1]));
+            }
+        }
+
 
         char ts[20] = { "\0" };
         time_t t = time(nullptr);
