@@ -1090,6 +1090,7 @@ namespace tisaNET{
                         }
                     }
                 }
+                trainer[current_layer].dW->multi_scalar(1.0 / feature_num);
                 tisaMat::vector_multiscalar(trainer[current_layer].dB, 1.0 / feature_num);
                 propagate_matrix = tmp_prop;
             }
@@ -1220,7 +1221,7 @@ namespace tisaNET{
 
         uint16_t route_dpt = input_dim3[2] / filter_dim3[2];
         uint16_t size2D = route_row * route_col;
-        double sum_max = 0.;
+        //double sum_max = 0.;
 
         std::vector<double> tmp(route_row * route_col * route_dpt);
 
@@ -1238,14 +1239,14 @@ namespace tisaNET{
                         }
                     }
                     tmp[(size2D * current_map) + (base_row * route_col) + base_col] = tmp_sum;
-                    if (tmp_sum > sum_max) {
-                        sum_max = tmp_sum;
-                    }
+                    //if (tmp_sum > sum_max) {
+                    //    sum_max = tmp_sum;
+                    //}
                 }
             }
         }
         //平均する
-        tisaMat::vector_multiscalar(tmp, 1. / sum_max);
+        //tisaMat::vector_multiscalar(tmp, 1. / sum_max);
         return tmp;
     }
 

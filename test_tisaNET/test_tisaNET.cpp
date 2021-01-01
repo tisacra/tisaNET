@@ -11,7 +11,7 @@ int main()
     test_data.data = { {0,0,0},{0,0,1},{0,1,0},{0,1,1},{1,0,0},{1,0,1},{1,1,0},{1,1,1} };
     test_data.answer = { {0,1},{1,0},{0,1},{0,1},{1,0},{1,0},{0,1},{1,0} };
     */
-    tisaNET::load_MNIST("..\\..\\..\\..\\MNIST", train_data, test_data, 50000, 10000, false);
+    tisaNET::load_MNIST("..\\..\\..\\..\\MNIST", train_data, test_data, 5000, 1000, false);
 
     tisaNET::Model model;
 
@@ -32,11 +32,11 @@ int main()
     /**/ 
     int input1[3] = {28,28,1};
     int filter1[3] = {5,5,1};
-    model.Create_Comvolute_Layer(input1,filter1,5,2);
+    model.Create_Comvolute_Layer(input1,filter1, 10, 2);
     int filter2[3] = { 5,5,1 };
-    model.Create_Comvolute_Layer(filter2,5,2);
+    model.Create_Comvolute_Layer(filter2, 5, 2);
     int filter3[3] = { 5,5,1 };
-    model.Create_Comvolute_Layer(filter3, 10, 1);
+    model.Create_Comvolute_Layer(filter3, 1, 1);
     /**/
     /**/
     model.Create_Layer(16, RELU);
@@ -48,7 +48,7 @@ int main()
 
     model.monitor_accuracy(true);
     model.logging_error("log_mnist0101.csv");
-    model.train(0.01,train_data,test_data,10,10,CROSS_ENTROPY_ERROR);
-    model.save_model("mnist_0101_1.tp");
+    model.train(0.01,train_data,test_data,5,10,CROSS_ENTROPY_ERROR);
+    //model.save_model("mnist_0101_1.tp");
     return 0;
 }
