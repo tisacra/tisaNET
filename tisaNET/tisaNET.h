@@ -167,7 +167,6 @@ namespace tisaNET {
 				std::vector<double> input = tisaMat::vector_cast<double>(data);
 				if (net_layer.front().Activation_f == COMVOLUTE) {
 					net_layer.front().comvolute(input);
-
 					/*デバッグ用
 					std::vector<std::vector<double>> testinputV = { {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25} };
 					tisaMat::matrix testinput(testinputV);
@@ -177,14 +176,11 @@ namespace tisaNET {
 					//vectorからmatrixへ
 					net_layer.front().output_vec_to_mat();
 					int i = 1;
-					for (;net_layer[i].Activation_f == COMVOLUTE;i++) {
-						net_layer[i].comvolute(*(net_layer[i-1].Output_mat));
+					for (; net_layer[i].Activation_f == COMVOLUTE; i++) {
+						net_layer[i].comvolute(*(net_layer[i - 1].Output_mat));
 					}
 					//畳み込み最終段でvectorになおす
-					net_layer[i-1].output_mat_to_vec();
-					if ((net_layer[i-1].input_dim3[0] * net_layer[i - 1].input_dim3[1]) / (net_layer[i - 1].filter_dim3[0] / net_layer[i - 1].filter_dim3[1]) != 1) {
-						rasterized = true;
-					}
+					net_layer[i - 1 + back_prop_offset].output_mat_to_vec();
 				}
 				else if (net_layer.front().Activation_f == INPUT) {
 					net_layer.front().Output = input;
@@ -234,7 +230,7 @@ namespace tisaNET {
 		std::vector<double> feed_forward(std::vector<T>& Input_data) {
 			std::vector<double> output_vecter(net_layer.back().Output.size());
 			input_data(Input_data);
-			for (int i = back_prop_offset; i < number_of_layer(); i++) {
+			for (int i = back_prop_offset + comv_count; i < number_of_layer(); i++) {
 				std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
 				X = tisaMat::vector_add(X, net_layer[i].B);
 				//ソフトマックス関数を使うときはまず最大値を全部から引く
