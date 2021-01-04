@@ -584,7 +584,7 @@ namespace tisaNET{
         uint16_t route_col = output_dim3[1];
         uint16_t filter_size2D = filter_row * filter_column;
         uint16_t feature_size = (row + pad[0]) * (column + pad[1]);
-        double sum_max = 0.;
+        double tmp_max = 0.0;
 
         std::vector<double> input_use;
         //必要ならハーフパディング
@@ -621,17 +621,24 @@ namespace tisaNET{
                     }
                     
                     tmp_sum += B[c_f];
-                    tmp_sum = sigmoid(tmp_sum);
                     Output[(c_f * route_row * route_col) + (base_row * route_col) + base_col] = tmp_sum;
-                    if (tmp_sum > sum_max) {
-                        sum_max = tmp_sum;
+                    if (tmp_sum > tmp_max) {
+                        tmp_max = tmp_sum;
                     }
                 }
             }
         }
-
-        //平均する
-        //tisaMat::vector_multiscalar(Output,1./sum_max);
+        
+        //最大値で平均
+        if (tmp_max != 0.0) {
+            tisaMat::vector_multiscalar(Output,1. / tmp_max);
+        }
+        //sigmoid関数つかう
+        /*
+        for (int i = 0; i < Output.size();i++) {
+            Output[i] = sigmoid(Output[i]);
+        }
+        */
     }
 
     void layer::comvolute(tisaMat::matrix& input) {
@@ -647,7 +654,7 @@ namespace tisaNET{
         uint16_t route_dpt = input_dim3[2] / filter_dim3[2];
         uint16_t filter_size2D = filter_row * filter_column;
         uint16_t feature_size = (row + pad[0]) * (column + pad[1]);
-        double sum_max = 0.;
+        double tmp_max = 0.0;
 
         tisaMat::matrix input_use(route_dpt,feature_size);
         //必要ならハーフパディング
@@ -685,17 +692,27 @@ namespace tisaNET{
                             }
                         }
                         tmp_sum += B[c_f];
-                        tmp_sum = sigmoid(tmp_sum);
                         Output_mat->elements[(c_f * route_dpt) + current_map][(base_row * route_col) + base_col] = tmp_sum;
-                        if (tmp_sum > sum_max) {
-                            sum_max = tmp_sum;
+                        if (tmp_sum > tmp_max) {
+                            tmp_max = tmp_sum;
                         }
                     }
                 }
             }
         }
-        //正規化する
-        //Output_mat->multi_scalar(1. / sum_max);
+        
+        //最大値で平均
+        if (tmp_max != 0.0) {
+            Output_mat->multi_scalar(1. / tmp_max);
+        }
+        //sigmoid関数つかう
+        /*
+        for (int i = 0; i < Output_mat->mat_RC[0];i++) {
+            for (int j = 0; j < Output_mat->mat_RC[1];j++) {
+                Output_mat->elements[i][j] = sigmoid(Output_mat->elements[i][j]);
+            }
+        }
+        */
     }
 
     void layer::comvolute_test(tisaMat::matrix& input) {
@@ -753,9 +770,9 @@ namespace tisaNET{
     }
 
     void layer::output_vec_to_mat() {
-        uint16_t out_shape[3] = { (input_dim3[0] + 1 - filter_dim3[0]) / stride ,
-                                  (input_dim3[1] + 1 - filter_dim3[1]) / stride ,
-                                  input_dim3[2] / filter_dim3[2] * filter_num};
+        uint16_t out_shape[3] = { output_dim3[0] ,
+                                  output_dim3[1] ,
+                                  output_dim3[2]};
         uint16_t output2D = out_shape[0] * out_shape[1];
 
         for (int d = 0; d < out_shape[2];d++) {
@@ -1044,6 +1061,7 @@ namespace tisaNET{
                         std::vector<tisaMat::matrix> E = comv_vect_to_mat<uint16_t>(propagate_matrix.elements[(current_filter * feature_num) + current_X],out_3d);
 
                         //comvolute_layerの畳み込みにシグモイド関数を実装したので、その微分項を計算
+                        /*
                         tisaMat::matrix tmp_dsig(out_3d[0],out_3d[1]);
                         for (int i = 0; i < out_3d[0];i++) {
                             for (int j = 0; j < out_3d[1];j++) {
@@ -1053,6 +1071,7 @@ namespace tisaNET{
                         }
                         //秘伝のタレとシグモイド微分のアダマール積
                         E[0] = tisaMat::Hadamard_product(E[0],tmp_dsig);
+                        */
 
                         std::vector<tisaMat::matrix> E_for_dW;
                         for (int i = 0; i < out_3d[2];i++) {
@@ -1134,15 +1153,20 @@ namespace tisaNET{
     void Model::initialize() {
         std::random_device seed_gen;
         std::default_random_engine rand_gen(seed_gen());
-        std::uniform_real_distribution<> uni(0.0,1.0);
         std::normal_distribution<> dist;
 
-        for (int current_layer = 0; current_layer < comv_count; current_layer++) {
+        for (int current_layer = back_prop_offset; current_layer < comv_count + back_prop_offset; current_layer++) {
             int W_row = net_layer[current_layer].W->mat_RC[0];
             int W_column = net_layer[current_layer].W->mat_RC[1];
+            
+            int prev_nodes = net_layer[current_layer].node;
+
+            std::normal_distribution<>::param_type param(0.0, sqrt(2.0 / prev_nodes));
+            dist.param(param);
+
             for (int R = 0; R < W_row; R++) {
                 for (int C = 0; C < W_column; C++) {
-                    net_layer[current_layer].W->elements[R][C] = uni(rand_gen);
+                    net_layer[current_layer].W->elements[R][C] = dist(rand_gen);
                 }
             }
         }
@@ -1350,7 +1374,7 @@ namespace tisaNET{
             }
         }
 
-        for (int current_layer = back_prop_offset; current_layer < layer; current_layer++) {
+        for (int current_layer = back_prop_offset + comv_count; current_layer < layer; current_layer++) {
             int input = net_layer[current_layer - 1].Output.size();
             int current_node = net_layer[current_layer].node;
             std::vector<double> tmp_row(current_node);
@@ -1461,7 +1485,7 @@ namespace tisaNET{
         }
         
         //ここからモデルのパラメーターをファイルに書き込んでいく
-        for (int current_layer = back_prop_offset; current_layer < layer; current_layer++) {
+        for (int current_layer = back_prop_offset + comv_count; current_layer < layer; current_layer++) {
             int W_row = net_layer[current_layer].W->mat_RC[0];
             int node = net_layer[current_layer].W->mat_RC[1];
             //重み行列を書き込む
