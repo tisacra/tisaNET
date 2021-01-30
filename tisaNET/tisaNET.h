@@ -19,7 +19,7 @@
 #define STEP 2
 #define SOFTMAX 3
 #define INPUT 4
-#define COMVOLUTE 5
+#define SIMPLE_COMVOLUTE 5
 #define NORMALIZE 6
 
 #define MEAN_SQUARED_ERROR 0
@@ -27,7 +27,11 @@
 
 namespace tisaNET {
 
-	static const char* Af_name[7] = { "SIGMOID","RELU","STEP","SOFTMAX","INPUT","COMVOLUTE","NORMALINE" };
+	static const char* Af_name[7] = { "SIGMOID","RELU","STEP","SOFTMAX","INPUT","SIMPLE_COMVOLUTE","NORMALINE" };
+
+	bool is_conv_layer(uint8_t i);
+
+	uint8_t get_Af(uint8_t i);
 
 	struct Data_set {
 		std::vector<std::vector<double>> data;
@@ -45,6 +49,7 @@ namespace tisaNET {
 		//畳み込み層のためのデータ
 		//Wで代用のため廃止
 		//std::vector<tisaMat::matrix> filter;
+		bool is_conv = false;
 		uint8_t stride = 1;
 		uint16_t input_dim3[3];
 		uint8_t filter_dim3[3];
@@ -150,9 +155,9 @@ namespace tisaNET {
 		*/
 		//フィルター指定なし
 		//void Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int filter_num);
-		void Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int filter_num,int stride);
+		void Create_Comvolute_Layer(uint8_t Activation,int input_shape[3], int filter_shape[3], int filter_num,int stride);
 		//input_shape[3]の代わりに前の層のoutput_dim3を参照
-		void Create_Comvolute_Layer(int filter_shape[3], int filter_num, int stride);
+		void Create_Comvolute_Layer(uint8_t Activation,int filter_shape[3], int filter_num, int stride);
 
 
 		//入力層(最初の層のこと)にネットワークへの入力をいれる
@@ -165,7 +170,7 @@ namespace tisaNET {
 			}
 			else {
 				std::vector<double> input = tisaMat::vector_cast<double>(data);
-				if (net_layer.front().Activation_f == COMVOLUTE) {
+				if (is_conv_layer(net_layer.front().Activation_f)) {
 					net_layer.front().comvolute(input);
 					/*デバッグ用
 					std::vector<std::vector<double>> testinputV = { {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25} };
@@ -176,7 +181,7 @@ namespace tisaNET {
 					//vectorからmatrixへ
 					net_layer.front().output_vec_to_mat();
 					int i = 1;
-					for (; net_layer[i].Activation_f == COMVOLUTE; i++) {
+					for (; is_conv_layer(net_layer[i].Activation_f); i++) {
 						net_layer[i].comvolute(*(net_layer[i - 1].Output_mat));
 					}
 					//畳み込み最終段でvectorになおす
@@ -198,7 +203,7 @@ namespace tisaNET {
 			}
 			else {
 				std::vector<double> input = tisaMat::vector_cast<double>(data);
-				if (net_layer.front().Activation_f == COMVOLUTE) {
+				if (is_conv_layer(net_layer.front().Activation_f)) {
 					net_layer.front().comvolute(input);
 					/*デバッグ用
 					std::vector<std::vector<double>> testinputV = { {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25} };
@@ -210,7 +215,7 @@ namespace tisaNET {
 					net_layer.front().output_vec_to_mat();
 					trainer.front().Y_mat[index] = *(net_layer.front().Output_mat);
 					int i = 1;
-					for (; net_layer[i].Activation_f == COMVOLUTE; i++) {
+					for (; is_conv_layer(net_layer[i].Activation_f); i++) {
 						net_layer[i].comvolute(*(net_layer[i - 1].Output_mat));
 						trainer[i].Y_mat[index] = *(net_layer[i].Output_mat);
 					}

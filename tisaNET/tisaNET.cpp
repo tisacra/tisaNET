@@ -43,6 +43,18 @@ struct tm* localtime_r(const time_t* time, struct tm* resultp){
 
 namespace tisaNET{
 
+    bool is_conv_layer(uint8_t i) {
+        if ((0B00010000 & i) != 0) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    uint8_t get_Af(uint8_t i) {
+        return 0B00001111 & i;
+    }
 
     //MNISTからデータを作る
     void load_MNIST(const char* path, Data_set& train_data, Data_set& test_data,int sample_size,int test_size, bool single_output) {
@@ -473,9 +485,10 @@ namespace tisaNET{
         net_layer.push_back(tmp);
     }
 
-    void Model::Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int f_num, int st) {
+    void Model::Create_Comvolute_Layer(uint8_t Activation,int input_shape[3], int filter_shape[3], int f_num, int st) {
         layer tmp;
-        tmp.Activation_f = COMVOLUTE;
+        tmp.is_conv = true;
+        tmp.Activation_f = Activation;
         tmp.input_dim3[0] = input_shape[0];
         tmp.input_dim3[1] = input_shape[1];
         tmp.input_dim3[2] = input_shape[2];
@@ -522,9 +535,14 @@ namespace tisaNET{
         net_layer.push_back(tmp);
     }
 
-    void Model::Create_Comvolute_Layer(int filter_shape[3], int f_num, int st) {
+    void Model::Create_Comvolute_Layer(uint8_t Activation,int filter_shape[3], int f_num, int st) {
+        if (net_layer.size() == 0) {
+            printf("Can't Create network without specify input shape\n");
+            exit(EXIT_FAILURE);
+        }
         layer tmp;
-        tmp.Activation_f = COMVOLUTE;
+        tmp.is_conv = true;
+        tmp.Activation_f = Activation;
         tmp.input_dim3[0] = net_layer.back().output_dim3[0];
         tmp.input_dim3[1] = net_layer.back().output_dim3[1];
         tmp.input_dim3[2] = net_layer.back().output_dim3[2];
@@ -1360,10 +1378,10 @@ namespace tisaNET{
         }
 
         for (int current_layer = 0; current_layer < layer;current_layer++) {
-            if (Activation_f[current_layer] == COMVOLUTE) {
+            if (is_conv_layer(Activation_f[current_layer])) {
                 int input[3] = { dim3_tmp[current_layer][0],dim3_tmp[current_layer][1],dim3_tmp[current_layer][2]};
                 int filter[3] = { filter_tmp[current_layer][0], filter_tmp[current_layer][1], filter_tmp[current_layer][2] };
-                Create_Comvolute_Layer(input,filter,fnum_tmp[current_layer], stride_tmp[current_layer]);
+                Create_Comvolute_Layer(get_Af(Activation_f[current_layer]),input,filter,fnum_tmp[current_layer], stride_tmp[current_layer]);
                 /*
                 Create_Comvolute_Layer(dim2_tmp[current_layer][0], dim2_tmp[current_layer][1],
                                        filter_tmp[current_layer][0], filter_tmp[current_layer][1],
@@ -1429,7 +1447,7 @@ namespace tisaNET{
         //ロードしたモデルの概形を表示する
         for (int i = 0;i < net_layer.size();i++) {
             printf("Layer : %s (node : %5d)",Af_name[net_layer[i].Activation_f],net_layer[i].node);
-            if (net_layer[i].Activation_f == COMVOLUTE) {
+            if (net_layer[i].is_conv) {
                 printf(" || input : ( %4d , %4d , %4d) filter : ( %3d, %3d, %3d) * %3d\n",net_layer[i].input_dim3[0], net_layer[i].input_dim3[1], net_layer[i].input_dim3[2],
                                                                                           net_layer[i].filter_dim3[0], net_layer[i].filter_dim3[1], net_layer[i].filter_dim3[2],
                                                                                           net_layer[i].filter_num);
@@ -1464,7 +1482,7 @@ namespace tisaNET{
             file.write(reinterpret_cast<char*>(&node),sizeof(uint16_t));
         }
         for (int current_layer = 0; current_layer < layer; current_layer++) {
-            uint8_t Af = net_layer[current_layer].Activation_f;
+            uint8_t Af = net_layer[current_layer].Activation_f | (net_layer[current_layer].is_conv << 4);
             file.write(reinterpret_cast<char*>(&Af), sizeof(uint8_t));
         }
         const char Data_head[d_size] = data_head;
@@ -1552,16 +1570,16 @@ namespace tisaNET{
             Trainer tmp;
             tmp.dW = new tisaMat::matrix(net_layer[i+ back_prop_offset].W->mat_RC[0], net_layer[i + back_prop_offset].W->mat_RC[1]);
 
-            if (net_layer[i].Activation_f != COMVOLUTE) {
-                tmp.dB = std::vector<double>(net_layer[i + back_prop_offset].node);
-                for (int j = 0; j < batch_size; j++) {
-                    tmp.Y.push_back(std::vector<double>(net_layer[i + back_prop_offset].node));
-                }
-            }
-            else {
+            if (net_layer[i].is_conv) {
                 tmp.dB = std::vector<double>(net_layer[i + back_prop_offset].filter_num);
                 for (int j = 0; j < batch_size; j++) {
                     tmp.Y_mat.push_back(tisaMat::matrix(net_layer[i + back_prop_offset].Output_mat->mat_RC[0], net_layer[i + back_prop_offset].Output_mat->mat_RC[1]));
+                }
+            }
+            else {
+                tmp.dB = std::vector<double>(net_layer[i + back_prop_offset].node);
+                for (int j = 0; j < batch_size; j++) {
+                    tmp.Y.push_back(std::vector<double>(net_layer[i + back_prop_offset].node));
                 }
             }
             trainer.push_back(tmp);
