@@ -14,7 +14,7 @@ int main()
     */
 
     tisaNET::Model model;
-    model.load_model("..\\test_tisaNET\\mnist_1212_1.tp");
+    model.load_model("..\\test_tisaNET\\mnist_0103_1.tp");
 
     /*
     tisaNET::Data_set eval;
@@ -37,7 +37,7 @@ int main()
     }
     */
 
-    std::vector<uint8_t> input = tisaNET::vec_from_256bmp("..\\..\\..\\MNIST\\6-001.bmp");
+    std::vector<uint8_t> input = tisaNET::vec_from_256bmp("..\\..\\..\\MNIST\\5-001.bmp");
     std::vector<double> output = model.feed_forward(input);
     for (int k = 0; k < 28; k++) {
         for (int j = 0; j < 28; j++) {
