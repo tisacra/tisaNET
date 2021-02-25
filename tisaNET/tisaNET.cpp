@@ -651,12 +651,17 @@ namespace tisaNET{
         if (tmp_max != 0.0) {
             tisaMat::vector_multiscalar(Output,1. / tmp_max);
         }
+
         //sigmoid関数つかう
-        /*
-        for (int i = 0; i < Output.size();i++) {
-            Output[i] = sigmoid(Output[i]);
+        switch (Activation_f) {
+            case SIGMOID:
+                for (int i = 0; i < Output.size(); i++) {
+                    Output[i] = sigmoid(Output[i]);
+                }
+                break;
+            default:
+                break;
         }
-        */
     }
 
     void layer::comvolute(tisaMat::matrix& input) {
@@ -723,14 +728,17 @@ namespace tisaNET{
         if (tmp_max != 0.0) {
             Output_mat->multi_scalar(1. / tmp_max);
         }
+
         //sigmoid関数つかう
-        /*
-        for (int i = 0; i < Output_mat->mat_RC[0];i++) {
-            for (int j = 0; j < Output_mat->mat_RC[1];j++) {
-                Output_mat->elements[i][j] = sigmoid(Output_mat->elements[i][j]);
-            }
+        switch (Activation_f) {
+            case SIGMOID:
+                for (int i = 0; i < Output.size(); i++) {
+                    Output[i] = sigmoid(Output[i]);
+                }
+                break;
+            default:
+                break;
         }
-        */
     }
 
     void layer::comvolute_test(tisaMat::matrix& input) {
