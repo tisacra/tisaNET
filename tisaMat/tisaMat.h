@@ -37,6 +37,12 @@ namespace tisaMat {
 		//mat‚ðƒXƒJƒ‰[”{‚·‚é
 		void multi_scalar(double scalar);
 
+		//•½‹Ï‚ðŒvŽZ‚·‚é
+		double average();
+
+		//•ªŽU‚ðŒvŽZ‚·‚é
+		double distributed();
+
 		//¶•Ó‚Ìs—ñ‚É‰E•Ó‚Ìs—ñ‚ð‘ã“ü
 		void operator=(matrix mat) {
 			this->mat_RC[0] = mat.mat_RC[0];
@@ -110,4 +116,5 @@ namespace tisaMat {
 		}
 		return tmp;
 	}
+
 }
