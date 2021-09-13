@@ -11,7 +11,7 @@ int main()
     test_data.data = { {0,0,0},{0,0,1},{0,1,0},{0,1,1},{1,0,0},{1,0,1},{1,1,0},{1,1,1} };
     test_data.answer = { {0,1},{1,0},{0,1},{0,1},{1,0},{1,0},{0,1},{1,0} };
     */
-    tisaNET::load_MNIST("..\\..\\MNIST", train_data, test_data, 7000, 1000, false);
+    tisaNET::load_MNIST("..\\..\\MNIST", train_data, test_data, 20000, 1000, false);
 
     tisaNET::Model model;
 
@@ -28,7 +28,7 @@ int main()
     */
     bool use_load = 0;
     if (use_load) {
-        model.load_model("mnist_0125_1.tp");
+        model.load_model("mnist_0913_1.tp");
     }
     else {
         //MNISTは784
@@ -44,6 +44,6 @@ int main()
     model.monitor_accuracy(true);
     //model.logging_error("log_mnist0125.csv");
     model.train(0.01,train_data,test_data,5,10,CROSS_ENTROPY_ERROR);
-    model.save_model("mnist_0809_1.tp");
+    model.save_model("mnist_0913_1.tp");
     return 0;
 }

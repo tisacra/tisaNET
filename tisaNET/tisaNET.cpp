@@ -886,6 +886,9 @@ namespace tisaNET{
             output_matrix.elements[data_index] = net_layer.back().Output;
             //デバッグ用の分散確認
             double dist = output_matrix.distributed();
+            printf("\ndistributed : %lf",dist);
+            printf("\r");
+            printf("\033[%dA", 1);
         }
         return output_matrix;
     }
