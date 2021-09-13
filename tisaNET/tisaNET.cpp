@@ -884,6 +884,8 @@ namespace tisaNET{
                 trainer[i-back_prop_offset].Y[data_index] = net_layer[i].Output;
             }
             output_matrix.elements[data_index] = net_layer.back().Output;
+            //デバッグ用の分散確認
+            double dist = output_matrix.distributed();
         }
         return output_matrix;
     }
