@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <ctime>
+#include <sstream>
 
 #define format_key {'t','i','s','a','N','E','T'}
 #define f_k_size 7
@@ -19,6 +20,9 @@
 #define data_head_size sizeof(char) * 4
 #define expand_key_size sizeof(char) * 6
 
+#define mnist_train_size 60000
+#define mnist_test_size 10000
+
 #define mnist_pict_offset 16
 #define mnist_lab_offset 8
 
@@ -28,6 +32,9 @@
 #define mnist_train_l "train-labels.idx1-ubyte"
 #define mnist_test_d "t10k-images.idx3-ubyte"
 #define mnist_test_l "t10k-labels.idx1-ubyte"
+
+#define mnist_train_csv "mnist_train.csv"
+#define mnist_test_csv "mnist_test.csv"
 
 #define judge 0.05
 
@@ -250,6 +257,140 @@ namespace tisaNET{
         }
 
         printf("  :>  loaded MNIST successfully\n");
+    }
+
+    std::vector<int> split_stoi(std::string& input, char delimiter)
+    {
+        std::istringstream stream(input);
+        std::string field;
+        std::vector<int> result;
+        while (getline(stream, field, delimiter)) {
+            result.push_back(stoi(field));
+        }
+        return result;
+    }
+
+    void load_MNIST(const char* path, Data_set& train_data, Data_set& test_data, int sample_size, int test_size, bool single_output) {
+        std::random_device get_rand_dev;
+        std::mt19937_64 get_rand_mt(get_rand_dev()); // seedに乱数を指定
+        std::vector<int> index;
+
+        if (sample_size > mnist_train_size) {
+            printf("ERROR : too much sample_size!\n");
+            exit(1);
+        }
+        if (test_size > mnist_test_size) {
+            printf("ERROR : too much test_size!\n");
+            exit(1);
+        }
+
+        //train_data 準備
+        for (int i = 0; i < mnist_train_size;i++) {
+            index.push_back(i);
+        }
+        std::shuffle(index.begin(), index.end(), get_rand_mt);
+
+        std::string filename = (std::string)path + '\\' + mnist_train_csv;
+        std::ifstream file_d(filename);
+        if (!file_d) {
+            printf("Can not open file : %s\n", filename);
+            exit(EXIT_FAILURE);
+        }
+
+        std::string buf;
+        std::vector<std::vector<int>> alldata;
+        while (getline(file_d, buf)) {
+            alldata.push_back(split_stoi(buf,','));
+        }
+        
+        for (int i = 0; i < sample_size;i++) {
+            int ind = index[i];
+            uint8_t tmp_for_l;
+            std::vector<uint8_t> tmp_l;
+
+            tmp_for_l = alldata[ind][i];
+            if (single_output) {
+                tmp_l.push_back(tmp_for_l);
+            }
+            else {
+                for (int bit = 0; bit < 10; bit++) {
+                    if (bit == tmp_for_l) {
+                        tmp_l.push_back(1);
+                    }
+                    else {
+                        tmp_l.push_back(0);
+                    }
+                }
+            }
+
+            std::vector<double> tmp_d(mnist_image_size);
+            train_data.answer.push_back(tmp_l);
+            for (int j = 1; j < mnist_image_size+1;j++) {
+                tmp_d.push_back((double)alldata[ind][j] / 256.);
+            }
+            train_data.data.push_back(tmp_d);
+        }
+        index.clear();
+        alldata.clear();
+
+        //test_data 準備
+        for (int i = 0; i < mnist_test_size; i++) {
+            index.push_back(i);
+        }
+        std::shuffle(index.begin(), index.end(), get_rand_mt);
+
+        std::string filename = (std::string)path + '\\' + mnist_test_csv;
+        std::ifstream file_d(filename);
+        if (!file_d) {
+            printf("Can not open file : %s\n", filename);
+            exit(EXIT_FAILURE);
+        }
+
+        while (getline(file_d, buf)) {
+            alldata.push_back(split_stoi(buf, ','));
+        }
+
+        for (int i = 0; i < test_size; i++) {
+            int ind = index[i];
+            uint8_t tmp_for_l;
+            std::vector<uint8_t> tmp_l;
+
+            tmp_for_l = alldata[ind][i];
+            if (single_output) {
+                tmp_l.push_back(tmp_for_l);
+            }
+            else {
+                for (int bit = 0; bit < 10; bit++) {
+                    if (bit == tmp_for_l) {
+                        tmp_l.push_back(1);
+                    }
+                    else {
+                        tmp_l.push_back(0);
+                    }
+                }
+            }
+
+            std::vector<double> tmp_d(mnist_image_size);
+            test_data.answer.push_back(tmp_l);
+            for (int j = 1; j < mnist_image_size + 1; j++) {
+                tmp_d.push_back((double)alldata[ind][j] / 256.);
+            }
+            test_data.data.push_back(tmp_d);
+        }
+
+        printf("  :>  loaded MNIST successfully\n");
+    }
+
+    void load_MNIST(const char* path, Data_set& test_data, const int test_size, bool single_output) {
+        std::random_device get_rand_dev;
+        std::mt19937_64 get_rand_mt(get_rand_dev()); // seedに乱数を指定
+        std::vector<int> index;
+        
+        //test_data 準備
+        for (int i = 0; i < 10000; i++) {
+            index[i] = i;
+        }
+        std::shuffle(index.begin(), index.end(), get_rand_mt);
     }
 
     //256色BMPファイルから一次配列をつくる

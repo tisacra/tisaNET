@@ -116,6 +116,9 @@ namespace tisaNET {
 	//MNISTからデータを作る
 	void load_MNIST(const char* path,Data_set& train_data,Data_set& test_data, int sample_size,int test_size, bool single_output);
 	void load_MNIST(const char* path,Data_set& test_data,int test_size, bool single_output);
+	//csv形式のMNISTデータセットから <https://github.com/pjreddie/mnist-csv-png>
+	void load_MNIST_csv(const char* path, Data_set& train_data, Data_set& test_data, int sample_size, int test_size, bool single_output);
+	void load_MNIST_csv(const char* path, Data_set& test_data, int test_size, bool single_output);
 
 	//256色BMPファイルから一次配列を作る
 	std::vector<uint8_t> vec_from_256bmp(const char *bmp_file);
