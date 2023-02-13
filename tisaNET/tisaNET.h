@@ -13,29 +13,52 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <array>
 
 #define SIGMOID 0
 #define RELU 1
 #define STEP 2
 #define SOFTMAX 3
 #define INPUT 4
-#define SIMPLE_COMVOLUTE 5
+#define SIMPLE_CONVOLUTE 5
 #define NORMALIZE 6
 
 #define MEAN_SQUARED_ERROR 0
 #define CROSS_ENTROPY_ERROR 1
 
+#define CONVOLUTE 0x10
+#define POOLING 0x20
+#define MAX_POOL 0
+#define AVE_POOL 1
+#define SUM_POOL 2
+
 namespace tisaNET {
 
-	static const char* Af_name[7] = { "SIGMOID","RELU","STEP","SOFTMAX","INPUT","SIMPLE_COMVOLUTE","NORMALINE" };
+	static const char* Af_name[7] = { "SIGMOID","RELU   ","STEP   ","SOFTMAX","INPUT  ","SIMPLE_CONVOLUTE","NORMALINE" };
+	static const char* pool_mode[3] = {"MAX_POOL","AVERAGE_POOL","SUM_POOL"};
 
-	bool is_conv_layer(uint8_t i);
+	double step(double X);
+	double sigmoid(double X);
+	double ReLU(double X);
+	double softmax(double X);
+
+	//bool is_conv_layer(uint8_t i);
 
 	uint8_t get_Af(uint8_t i);
+
+	double variance(std::vector<tisaMat::matrix> mat);
 
 	struct Data_set {
 		std::vector<std::vector<double>> data;
 		std::vector<std::vector<uint8_t>> answer;
+	};
+
+	struct Trainer {
+		tisaMat::matrix* dW = nullptr;
+		std::vector<double> dB;
+		std::vector<std::vector<double>> Y;
+		std::vector<std::vector<tisaMat::matrix>> Y_mat;
+		std::vector < std::vector<std::vector<std::vector<std::array<int,3>>>>> pool_index;
 	};
 
 	class layer {
@@ -49,31 +72,36 @@ namespace tisaNET {
 		//畳み込み層のためのデータ
 		//Wで代用のため廃止
 		//std::vector<tisaMat::matrix> filter;
-		bool is_conv = false;
+		
+		//is_conv_layer関数実装に伴い廃止
+		//bool is_conv = false;
 		uint8_t stride = 1;
 		uint16_t input_dim3[3];
+		//filter_dimをpoolingにも流用する
 		uint8_t filter_dim3[3];
 		uint16_t output_dim3[3];
 		uint8_t pad[2] = {0,0};
 		bool padding_flag = false;
 		uint8_t filter_num = 1;
-		tisaMat::matrix* Output_mat = nullptr;
-		void comvolute(std::vector<double>& input);
-		void comvolute(tisaMat::matrix& input);
-		void comvolute_test(tisaMat::matrix& input);
+
+		std::vector<tisaMat::matrix> Output_mat;
+		double (*Af[4])(double) = { sigmoid,ReLU,step,softmax };
+		void convolute(std::vector<double>& input);
+		void convolute(std::vector<tisaMat::matrix>& input);
+		void max_pooling(std::vector<double>& input);
+		void max_pooling(std::vector<tisaMat::matrix>& input);
+		void max_pooling(std::vector<double>& input,Trainer& trainer,int batch_index);
+		void max_pooling(std::vector<tisaMat::matrix>& input, Trainer& trainer, int batch_index);
+		void convolute_test(tisaMat::matrix& input);
 		void output_vec_to_mat();
 		void output_mat_to_vec();
-	};
-
-	struct Trainer {
-		tisaMat::matrix* dW = nullptr;
-		std::vector<double> dB;
-		std::vector<std::vector<double>> Y;
-		std::vector<tisaMat::matrix> Y_mat;
+		bool is_conv_layer();
+		bool is_pool_layer();
+		bool pool_mode();
 	};
 
 	template <typename T>
-	std::vector<tisaMat::matrix> comv_vect_to_mat(std::vector<double> input, T* shape) {
+	std::vector<tisaMat::matrix> conv_vect_to_mat(std::vector<double> input, T* shape) {
 		T row = shape[0];
 		T col = shape[1];
 		T dpt = shape[2];
@@ -92,7 +120,7 @@ namespace tisaNET {
 	}
 	
 	template <typename T>
-	tisaMat::matrix comv_vect_to_mat2D(std::vector<double> input, T* shape) {
+	tisaMat::matrix conv_vect_to_mat2D(std::vector<double> input, T* shape) {
 		T row = shape[0];
 		T col = shape[1];
 		T size2D = row * col;
@@ -107,26 +135,43 @@ namespace tisaNET {
 		return tmp;
 	}
 
-	std::vector<double> comv_mat_to_vect(std::vector<tisaMat::matrix>& origin);
+	template <typename T>
+	std::vector<tisaMat::matrix> conv_vect_to_mat3D(std::vector<double> input, T* shape) {
+		T row = shape[0];
+		T col = shape[1];
+		T dpt = shape[2];
+		T size2D = row * col;
 
-	std::vector<double> comv_mat_to_vect2D(tisaMat::matrix& origin);
+		std::vector<tisaMat::matrix> tmp(dpt, tisaMat::matrix(row,col));
 
-	std::vector<double> comvolute(std::vector<tisaMat::matrix> input, std::vector<tisaMat::matrix> filter, uint16_t* input_dim3, uint16_t* filter_dim3,uint8_t stride);
+		for (int k = 0; k < dpt;k++) {
+			for (int i = 0; i < row; i++) {
+				for (int j = 0; j < col; j++) {
+					tmp[k].elements[i][j] = input[(k * size2D) + (i * col) + j];
+				}
+			}
+		}
+		
+		return tmp;
+	}
 
-	//MNISTからデータを作る
+	std::vector<double> conv_mat_to_vect(std::vector<tisaMat::matrix>& origin);
+
+	std::vector<double> conv_mat_to_vect2D(tisaMat::matrix& origin);
+
+	std::vector<double> convolute(std::vector<tisaMat::matrix> input, std::vector<tisaMat::matrix> filter, uint16_t* input_dim3, uint16_t* filter_dim3,uint8_t stride);
+	std::vector<double> max_pooling(std::vector<tisaMat::matrix> input, uint16_t* input_dim3, uint16_t* filter_dim3);
+
+
+	//MNISTからデータを作る(csv形式のMNISTデータセットから <https://github.com/pjreddie/mnist-csv-png>)
 	void load_MNIST(const char* path,Data_set& train_data,Data_set& test_data, int sample_size,int test_size, bool single_output);
 	void load_MNIST(const char* path,Data_set& test_data,int test_size, bool single_output);
-	//csv形式のMNISTデータセットから <https://github.com/pjreddie/mnist-csv-png>
-	void load_MNIST_csv(const char* path, Data_set& train_data, Data_set& test_data, int sample_size, int test_size, bool single_output);
-	void load_MNIST_csv(const char* path, Data_set& test_data, int test_size, bool single_output);
+	
+	//void load_MNIST_csv(const char* path, Data_set& train_data, Data_set& test_data, int sample_size, int test_size, bool single_output);
+	//void load_MNIST_csv(const char* path, Data_set& test_data, int test_size, bool single_output);
 
 	//256色BMPファイルから一次配列を作る
 	std::vector<uint8_t> vec_from_256bmp(const char *bmp_file);
-
-	double step(double X);
-	double sigmoid(double X);
-	double ReLU(double X);
-	double softmax(double X);
 
 	//数値をバイナリで表示
 	bool print01(int bit, long Value);
@@ -141,7 +186,7 @@ namespace tisaNET {
 	
 	tisaMat::matrix zero_padding(tisaMat::matrix &mat,uint8_t p,uint8_t q);
 
-	tisaMat::matrix zero_padding_half(tisaMat::matrix& mat, uint8_t p, uint8_t q);
+	tisaMat::matrix zero_padding_half(tisaMat::matrix& mat, char p, char q);
 
 	class Model {
 	public:
@@ -158,9 +203,13 @@ namespace tisaNET {
 		*/
 		//フィルター指定なし
 		//void Create_Comvolute_Layer(int input_shape[3], int filter_shape[3], int filter_num);
-		void Create_Comvolute_Layer(uint8_t Activation,int input_shape[3], int filter_shape[3], int filter_num,int stride);
+		void Create_Convolute_Layer(uint8_t Activation,int input_shape[3], int filter_shape[3], int filter_num,int stride);
 		//input_shape[3]の代わりに前の層のoutput_dim3を参照
-		void Create_Comvolute_Layer(uint8_t Activation,int filter_shape[3], int filter_num, int stride);
+		void Create_Convolute_Layer(uint8_t Activation,int filter_shape[3], int filter_num, int stride);
+
+		//プーリング層をつくる
+		void Create_Pooling_Layer(uint8_t Activation, int input_shape[3], int filter_shape[3]);
+		void Create_Pooling_Layer(uint8_t Activation, int filter_shape[3]);
 
 
 		//入力層(最初の層のこと)にネットワークへの入力をいれる
@@ -173,8 +222,15 @@ namespace tisaNET {
 			}
 			else {
 				std::vector<double> input = tisaMat::vector_cast<double>(data);
-				if (is_conv_layer(net_layer.front().Activation_f)) {
-					net_layer.front().comvolute(input);
+				if (net_layer.front().is_conv_layer()) {
+					if (net_layer.front().is_conv_layer()) net_layer.front().convolute(input);
+					else {
+						switch (net_layer.front().Activation_f ^ POOLING) {
+						case MAX_POOL:
+							net_layer.front().max_pooling(input);
+							break;
+						}
+					}
 					/*デバッグ用
 					std::vector<std::vector<double>> testinputV = { {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25} };
 					tisaMat::matrix testinput(testinputV);
@@ -184,8 +240,15 @@ namespace tisaNET {
 					//vectorからmatrixへ
 					net_layer.front().output_vec_to_mat();
 					int i = 1;
-					for (; is_conv_layer(net_layer[i].Activation_f); i++) {
-						net_layer[i].comvolute(*(net_layer[i - 1].Output_mat));
+					for (; net_layer[i].is_conv_layer() || net_layer[i].is_pool_layer(); i++) {
+						if (net_layer[i].is_conv_layer()) net_layer[i].convolute(net_layer[i - 1].Output_mat);
+						else {
+							switch (net_layer[i].Activation_f ^ POOLING) {
+							case MAX_POOL:
+								net_layer[i].max_pooling(net_layer[i - 1].Output_mat);
+								break;
+							}
+						}
 					}
 					//畳み込み最終段でvectorになおす
 					net_layer[i - 1 + back_prop_offset].output_mat_to_vec();
@@ -206,8 +269,15 @@ namespace tisaNET {
 			}
 			else {
 				std::vector<double> input = tisaMat::vector_cast<double>(data);
-				if (is_conv_layer(net_layer.front().Activation_f)) {
-					net_layer.front().comvolute(input);
+				if (net_layer.front().is_conv_layer() || net_layer.front().is_pool_layer()) {
+					if (net_layer.front().is_conv_layer()) net_layer.front().convolute(input);
+					else {
+						switch (net_layer.front().Activation_f ^ POOLING) {
+							case MAX_POOL:
+								net_layer.front().max_pooling(input,trainer.front(),index);
+								break;
+						}
+					}
 					/*デバッグ用
 					std::vector<std::vector<double>> testinputV = { {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25} };
 					tisaMat::matrix testinput(testinputV);
@@ -216,15 +286,34 @@ namespace tisaNET {
 
 					//vectorからmatrixへ
 					net_layer.front().output_vec_to_mat();
-					trainer.front().Y_mat[index] = *(net_layer.front().Output_mat);
+					//入力は一つなので、output_matの深さはfilter_num
+					trainer.front().Y_mat[index] = net_layer.front().Output_mat;
+
+					//分散の表示
+					double var = net_layer.front().Output_mat.front().variance();
+					printf("\n| Layer %d | variance : %lf", 0, var);
+
 					int i = 1;
-					for (; is_conv_layer(net_layer[i].Activation_f); i++) {
-						net_layer[i].comvolute(*(net_layer[i - 1].Output_mat));
-						trainer[i].Y_mat[index] = *(net_layer[i].Output_mat);
+					for (; net_layer[i].is_conv_layer() || net_layer[i].is_pool_layer(); i++) {
+						if (net_layer[i].is_conv_layer()) net_layer[i].convolute(net_layer[i - 1].Output_mat);
+						else {
+							switch (net_layer[i].Activation_f ^ POOLING) {
+							case MAX_POOL:
+								net_layer[i].max_pooling(net_layer[i - 1].Output_mat, trainer[i],index);
+								break;
+							}
+						}
+						trainer[i].Y_mat[index] = net_layer[i].Output_mat;
+						
+						//分散の表示
+						double var = variance(net_layer[i].Output_mat);
+						printf("\n| Layer %d | variance : %lf", i, var);
 					}
+
 					//畳み込み最終段でvectorになおす
 					net_layer[i - 1 + back_prop_offset].output_mat_to_vec();
-					trainer[i - 1].Y[index] = comv_mat_to_vect2D(trainer[i - 1].Y_mat[index]);
+					trainer[i - 1].Y[index] = conv_mat_to_vect(trainer[i - 1].Y_mat[index]);
+
 				}
 				else if (net_layer.front().Activation_f == INPUT) {
 					net_layer.front().Output = input;
@@ -238,7 +327,7 @@ namespace tisaNET {
 		std::vector<double> feed_forward(std::vector<T>& Input_data) {
 			std::vector<double> output_vecter(net_layer.back().Output.size());
 			input_data(Input_data);
-			for (int i = back_prop_offset + comv_count; i < number_of_layer(); i++) {
+			for (int i = back_prop_offset + conv_count; i < number_of_layer(); i++) {
 				std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
 				X = tisaMat::vector_add(X, net_layer[i].B);
 				//ソフトマックス関数を使うときはまず最大値を全部から引く
@@ -296,15 +385,17 @@ namespace tisaNET {
 		bool monitoring_accuracy = false;
 		bool log_error = false;
 		uint8_t back_prop_offset = 0;
-		uint8_t comv_count = 0;
+		uint8_t conv_count = 0;
 		std::string log_filename;
 		std::vector<layer> net_layer;
 		bool rasterized = false;
 		double (*Ef[2])(std::vector<std::vector<uint8_t>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
 		double (*Af[4])(double) = { sigmoid,ReLU,step,softmax };
 		void m_a(std::vector<std::vector<double>>& output, std::vector<std::vector<uint8_t>>& answer, uint8_t error_func);
-		std::vector<std::vector<double>> b_p_decomv(tisaMat::matrix input, std::vector<tisaMat::matrix> filter);
+		std::vector<std::vector<double>> b_p_deconv(tisaMat::matrix input, std::vector<tisaMat::matrix> filter);
+		std::vector<std::vector<double>> de_max_pool(tisaMat::matrix E, std::vector<std::vector<std::array<int, 3>>> trainer, uint16_t* input_shape, uint8_t* filt_shape);
 	};
 
 	void show_train_progress(int total_iteration,int now_iteration);
+	void clear_under_cl(int lines);
 }

@@ -41,7 +41,7 @@ namespace tisaMat {
 		double average();
 
 		//分散を計算する
-		double distributed();
+		double variance();
 
 		//左辺の行列に右辺の行列を代入
 		void operator=(matrix mat) {

@@ -221,13 +221,13 @@ namespace tisaMat {
 		return ave;
 	}
 
-	double matrix:: distributed() {
+	double matrix:: variance() {
 		uint16_t element_num = mat_RC[0] * mat_RC[1];
 		double ave = average();
 		double dist = 0.;
 		for (int row = 0; row < mat_RC[0]; row++) {
 			for (int col = 0; col < mat_RC[1]; col++) {
-				dist += powf(elements[row][col] - ave,2) / element_num;
+				dist += powf(elements[row][col] - ave,2) / (float)element_num;
 			}
 		}
 		return dist;
