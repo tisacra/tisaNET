@@ -3,7 +3,6 @@
 
 int main()
 {
-    tisaNET::Data_set eval;
     
     /*for (int k = 0; k < 28; k++) {
         for (int i = 0; i < 28; i++) {
@@ -13,10 +12,14 @@ int main()
         printf("\n");
     }
     */
-    tisaNET::load_MNIST("..\\..\\MNIST",eval,10,false);
-    
+
     tisaNET::Model model;
-    model.load_model("..\\test_tisaNET\\mnist0910_2.tp");
+    model.load_model("..\\test_tisaNET\\mnist_0103_1.tp");
+
+    /*
+    tisaNET::Data_set eval;
+    tisaNET::load_MNIST("..\\..\\..\\MNIST",eval,10,false);
+    
     for (int i = 0; i < 10;i++) {
         std::vector<double> output = model.feed_forward(eval.data[i]);
         for (int k = 0; k < 28; k++) {
@@ -32,6 +35,22 @@ int main()
         int tag = std::distance(output.begin(), std::max_element(output.begin(), output.end()));
         printf("%lf%% で 「%d」です\n", percent, tag);
     }
-    
+    */
+
+    std::vector<uint8_t> input = tisaNET::vec_from_256bmp("..\\..\\..\\MNIST\\5-001.bmp");
+    std::vector<double> output = model.feed_forward(input);
+    for (int k = 0; k < 28; k++) {
+        for (int j = 0; j < 28; j++) {
+            int tmp = input[k * 28 + j];
+            printf("%3u ", tmp);
+        }
+        printf("\n");
+    }
+    printf("|answer|\n");
+    tisaMat::vector_show(output);
+    double percent = *(std::max_element(output.begin(), output.end())) * 100.0;
+    int tag = std::distance(output.begin(), std::max_element(output.begin(), output.end()));
+    printf("%lf%% で 「%d」です\n", percent, tag);
+
     return 0;
 }

@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_tisaNET", "test_tisaNE
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "eval_MNIST", "eval_MNIST\eval_MNIST.vcxproj", "{407E8218-799E-40BC-BEC2-171D839B0AB5}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_comv", "test_comv\test_comv.vcxproj", "{1DF5782A-AC24-456F-A818-FE7B93B03E76}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -61,6 +63,14 @@ Global
 		{407E8218-799E-40BC-BEC2-171D839B0AB5}.Release|x64.Build.0 = Release|x64
 		{407E8218-799E-40BC-BEC2-171D839B0AB5}.Release|x86.ActiveCfg = Release|Win32
 		{407E8218-799E-40BC-BEC2-171D839B0AB5}.Release|x86.Build.0 = Release|Win32
+		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Debug|x64.ActiveCfg = Debug|x64
+		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Debug|x64.Build.0 = Debug|x64
+		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Debug|x86.ActiveCfg = Debug|Win32
+		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Debug|x86.Build.0 = Debug|Win32
+		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Release|x64.ActiveCfg = Release|x64
+		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Release|x64.Build.0 = Release|x64
+		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Release|x86.ActiveCfg = Release|Win32
+		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

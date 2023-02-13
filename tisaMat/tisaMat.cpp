@@ -65,9 +65,10 @@ namespace tisaMat {
 	}
 
 	//vec1とvec2を足す
-	std::vector<double> vector_add(std::vector<double>& vec1, std::vector<double>& vec2) {
+	std::vector<double> vector_add(std::vector<double> vec1, std::vector<double> vec2) {
 		if (vec1.size() != vec2.size()) {
-			return std::vector<double>();
+			printf("vector shape are diffarent! can not add each!\n");
+			exit(EXIT_FAILURE);
 		}
 		else {
 			std::vector<double> tmp(vec1.size());
@@ -164,7 +165,7 @@ namespace tisaMat {
 	}
 
 	//vec1とmat1を掛ける
-	std::vector<double> vector_multiply(std::vector<double> vec1, matrix& mat1) {
+	std::vector<double> vector_multiply(std::vector<double>& vec1, matrix& mat1) {
 		if (mat1.mat_RC[0] != vec1.size()) {
 			printf("|!|can't multiply the vector and the matrix|!|\n");
 			return std::vector<double>();
@@ -207,5 +208,28 @@ namespace tisaMat {
 		for (int i = 0;i < vec.size();i++) {
 			vec[i] *= scalar;
 		}
+	}
+
+	double matrix::average() {
+		uint16_t element_num = mat_RC[0] * mat_RC[1];
+		double ave = 0.;
+		for (int row = 0; row < mat_RC[0];row++) {
+			for (int col = 0; col < mat_RC[1];col++) {
+				ave += elements[row][col] / element_num;
+			}
+		}
+		return ave;
+	}
+
+	double matrix:: variance() {
+		uint16_t element_num = mat_RC[0] * mat_RC[1];
+		double ave = average();
+		double dist = 0.;
+		for (int row = 0; row < mat_RC[0]; row++) {
+			for (int col = 0; col < mat_RC[1]; col++) {
+				dist += powf(elements[row][col] - ave,2) / (float)element_num;
+			}
+		}
+		return dist;
 	}
 }

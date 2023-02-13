@@ -37,6 +37,12 @@ namespace tisaMat {
 		//mat‚ðƒXƒJƒ‰[”{‚·‚é
 		void multi_scalar(double scalar);
 
+		//•½‹Ï‚ðŒvŽZ‚·‚é
+		double average();
+
+		//•ªŽU‚ðŒvŽZ‚·‚é
+		double variance();
+
 		//¶•Ó‚Ìs—ñ‚É‰E•Ó‚Ìs—ñ‚ð‘ã“ü
 		void operator=(matrix mat) {
 			this->mat_RC[0] = mat.mat_RC[0];
@@ -48,7 +54,7 @@ namespace tisaMat {
 	matrix matrix_add(matrix& mat1, matrix& mat2);
 
 	//vec1‚Ævec2‚ð‘«‚·
-	std::vector<double> vector_add(std::vector<double>& vec1, std::vector<double>& vec2);
+	std::vector<double> vector_add(std::vector<double> vec1, std::vector<double> vec2);
 
 	//mat1‚©‚çmat2‚ðˆø‚­
 	matrix matrix_subtract(tisaMat::matrix& mat1, tisaMat::matrix& mat2);
@@ -79,7 +85,7 @@ namespace tisaMat {
 	matrix Hadamard_division(matrix& mat1, matrix& mat2);
 
 	//vec1‚Æmat1‚ðŠ|‚¯‚é
-	std::vector<double> vector_multiply(std::vector<double> vec1,matrix& mat1);
+	std::vector<double> vector_multiply(std::vector<double>& vec1,matrix& mat1);
 
 	//mat‚ð“]’u‚·‚é
 	matrix matrix_transpose(matrix& mat);
@@ -110,4 +116,5 @@ namespace tisaMat {
 		}
 		return tmp;
 	}
+
 }
