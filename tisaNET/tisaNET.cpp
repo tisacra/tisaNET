@@ -7,20 +7,7 @@
 #include <ctime>
 #include <sstream>
 
-#define format_key {'t','i','s','a','N','E','T'}
-#define f_k_size 7
-
-#define data_head {'D','A','T','A'}
-#define d_size 4
-
-#define expand_key {'E','X','P','A','N','D'}
-#define e_x_size 6
-
-#define format_key_size sizeof(char) * 7
-#define data_head_size sizeof(char) * 4
-#define expand_key_size sizeof(char) * 6
-
-#define mnist_train_size 60000
+#define mnist_train_size 50000
 #define mnist_test_size 10000
 
 #define mnist_pict_offset 16
@@ -1343,6 +1330,14 @@ namespace tisaNET{
         else return Activation_f ^ POOLING;
     }
 
+
+    void layer::W_normalization() {
+        int num = W->mat_RC[0];
+        for (int i = 0; i < num;i++) {
+            tisaMat::vector_normalization(W->elements[i]);
+        }
+    }
+
     tisaMat::matrix Model::feed_forward(tisaMat::matrix& Input_data) {
         int sample_size = Input_data.mat_RC[0];
         tisaMat::matrix output_matrix(sample_size, net_layer.back().Output.size());
@@ -1375,6 +1370,7 @@ namespace tisaNET{
                 }
             }
             output_matrix.elements[data_index] = net_layer.back().Output;
+            emit_output(net_layer.back().Output);
         }
         return output_matrix;
     }
@@ -1435,6 +1431,7 @@ namespace tisaNET{
                 printf("\n| Layer %d | variance : %lf",i, var);
             }
             output_matrix.elements[data_index] = net_layer.back().Output;
+            emit_output(net_layer.back().Output);
             //デバッグ用の分散確認
             //double dist = output_matrix.variance();
             //printf("\ndistributed : %lf",dist);
@@ -2465,6 +2462,9 @@ namespace tisaNET{
                                 //printf("%d layer dB\n", layer);
                                 //tisaMat::vector_show(trainer[layer - 1].dB);
                             }
+                            if (net_layer[layer].is_conv_layer()) {
+                                net_layer[layer].W_normalization();
+                            }
                         }
                     }
 
@@ -2509,6 +2509,7 @@ namespace tisaNET{
                 }
             }
         }
+        printf("\ntraining complete!\n");
     }
 
     void Model::m_a(std::vector<std::vector<double>>& output, std::vector<std::vector<uint8_t>>& answer,uint8_t error_func) {

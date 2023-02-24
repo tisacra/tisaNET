@@ -209,6 +209,16 @@ namespace tisaMat {
 			vec[i] *= scalar;
 		}
 	}
+	
+	//vecを正規化する
+	void vector_normalization(std::vector<double>& vec) {
+		int size = vec.size();
+		double mean_sum = 0.;
+		for (int i = 0; i < size;i++) {
+			mean_sum += pow(vec[i],2);
+		}
+		vector_multiscalar(vec,1 / sqrt(mean_sum));
+	}
 
 	double matrix::average() {
 		uint16_t element_num = mat_RC[0] * mat_RC[1];
@@ -231,5 +241,41 @@ namespace tisaMat {
 			}
 		}
 		return dist;
+	}
+
+	double matrix::max() {
+		double tmp_max = elements[0][0];
+		for (int i = 0; i < mat_RC[0];i++) {
+			for (int j = 0; j < mat_RC[1];j++) {
+				if (tmp_max < elements[i][j]) tmp_max = elements[i][j];
+			}
+		}
+		return tmp_max;
+	}
+
+	double matrix::min() {
+		double tmp_min = elements[0][0];
+		for (int i = 0; i < mat_RC[0]; i++) {
+			for (int j = 0; j < mat_RC[1]; j++) {
+				if (tmp_min > elements[i][j]) tmp_min = elements[i][j];
+			}
+		}
+		return tmp_min;
+	}
+
+	double max(std::vector<tisaMat::matrix>& tensor) {
+		double tmp_max = tensor.front().max();
+		for (int i = 1; i < tensor.size(); i++) {
+			if (tmp_max < tensor[i].max()) tmp_max = tensor[i].max();
+		}
+		return tmp_max;
+	}
+
+	double min(std::vector<tisaMat::matrix>& tensor) {
+		double tmp_min = tensor.front().min();
+		for (int i = 1; i < tensor.size(); i++) {
+			if (tmp_min < tensor[i].min()) tmp_min = tensor[i].min();
+		}
+		return tmp_min;
 	}
 }

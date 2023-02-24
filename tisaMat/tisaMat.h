@@ -49,6 +49,11 @@ namespace tisaMat {
 			this->mat_RC[1] = mat.mat_RC[1];
 			this->elements = mat.elements;
 		}
+
+		//最大値を取得
+		double max();
+		//最小値を取得
+		double min();
 	};
 	//mat1とmat2を足す
 	matrix matrix_add(matrix& mat1, matrix& mat2);
@@ -96,6 +101,9 @@ namespace tisaMat {
 	//vecをスカラー倍する
 	void vector_multiscalar(std::vector<double>& vec, double scalar);
 
+	//vecを正規化する
+	void vector_normalization(std::vector<double>& vec);
+
 	//vecを表示する
 	template <typename T>
 	void vector_show(std::vector<T>& vec) {
@@ -117,4 +125,9 @@ namespace tisaMat {
 		return tmp;
 	}
 
+	//テンソルから最大値を取得
+	double max(std::vector<tisaMat::matrix>& tensor);
+
+	//テンソルから最小値を取得
+	double min(std::vector<tisaMat::matrix>& tensor);
 }

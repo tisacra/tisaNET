@@ -32,6 +32,26 @@
 #define AVE_POOL 1
 #define SUM_POOL 2
 
+
+#define format_key {'t','i','s','a','N','E','T'}
+#define f_k_size 7
+
+#define data_head {'D','A','T','A'}
+#define d_size 4
+
+#define expand_key {'E','X','P','A','N','D'}
+#define e_x_size 6
+
+#define format_key_size sizeof(char) * 7
+#define data_head_size sizeof(char) * 4
+#define expand_key_size sizeof(char) * 6
+
+
+
+#ifdef _MSC_VER
+struct tm* localtime_r(const time_t* time, struct tm* resultp);
+#endif
+
 namespace tisaNET {
 
 	static const char* Af_name[7] = { "SIGMOID","RELU   ","STEP   ","SOFTMAX","INPUT  ","SIMPLE_CONVOLUTE","NORMALINE" };
@@ -52,6 +72,8 @@ namespace tisaNET {
 		std::vector<std::vector<double>> data;
 		std::vector<std::vector<uint8_t>> answer;
 	};
+
+	void data_shuffle(Data_set& sdata);
 
 	struct Trainer {
 		tisaMat::matrix* dW = nullptr;
@@ -98,6 +120,8 @@ namespace tisaNET {
 		bool is_conv_layer();
 		bool is_pool_layer();
 		bool pool_mode();
+
+		void W_normalization();
 	};
 
 	template <typename T>
@@ -191,6 +215,8 @@ namespace tisaNET {
 	class Model {
 	public:
 
+		std::vector<layer> net_layer;
+
 		//ネットワークの一番うしろに層をつけ足す(initは重みを初期化するときの値、省略すると乱数)
 		void Create_Layer(int Outputs, uint8_t Activation);
 		void Create_Layer(int nodes, uint8_t Activation, double init);
@@ -213,15 +239,14 @@ namespace tisaNET {
 
 
 		//入力層(最初の層のこと)にネットワークへの入力をいれる
-		template <typename T>
-		void input_data(std::vector<T>& data) {
+		virtual void input_data(std::vector<double>& data) {
 			int input_num = data.size();
 			if (net_layer.front().node != input_num) {
 				printf("input error|!|\n");
 				exit(EXIT_FAILURE);
 			}
 			else {
-				std::vector<double> input = tisaMat::vector_cast<double>(data);
+				std::vector<double> input = data;
 				if (net_layer.front().is_conv_layer()) {
 					if (net_layer.front().is_conv_layer()) net_layer.front().convolute(input);
 					else {
@@ -260,15 +285,15 @@ namespace tisaNET {
 		}
 
 		//訓練用入力
-		template <typename T>
-		void input_data(std::vector<T>& data, std::vector<Trainer> &trainer,int index) {
+		virtual void input_data(std::vector<double>& data, std::vector<Trainer> &trainer,int index) {
 			int input_num = data.size();
 			if (net_layer.front().node != input_num) {
 				printf("input error|!|\n");
 				exit(EXIT_FAILURE);
 			}
 			else {
-				std::vector<double> input = tisaMat::vector_cast<double>(data);
+				std::vector<double> input = data;
+
 				if (net_layer.front().is_conv_layer() || net_layer.front().is_pool_layer()) {
 					if (net_layer.front().is_conv_layer()) net_layer.front().convolute(input);
 					else {
@@ -326,7 +351,8 @@ namespace tisaNET {
 		//単発
 		std::vector<double> feed_forward(std::vector<T>& Input_data) {
 			std::vector<double> output_vecter(net_layer.back().Output.size());
-			input_data(Input_data);
+			std::vector<double> input = tisaMat::vector_cast<double>(Input_data);
+			input_data(input);
 			for (int i = back_prop_offset + conv_count; i < number_of_layer(); i++) {
 				std::vector<double> X = tisaMat::vector_multiply(net_layer[i - 1].Output, *net_layer[i].W);
 				X = tisaMat::vector_add(X, net_layer[i].B);
@@ -357,6 +383,9 @@ namespace tisaNET {
 		tisaMat::matrix feed_forward(tisaMat::matrix& Input_data);
 		tisaMat::matrix feed_forward(tisaMat::matrix& Input_data, std::vector<Trainer>& trainer);
 
+		//Qt併用時のための関数
+		virtual void emit_output(std::vector<double>) {  }
+
 		//逆誤差伝播する
 		void B_propagate(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer,double lr, tisaMat::matrix& input_batch);
 
@@ -373,7 +402,7 @@ namespace tisaNET {
 		void load_model(const char* tp_file);
 
 		//モデルをファイルに出力する
-		void save_model(const char* tp_file);
+		virtual void save_model(const char* tp_file);
 
 		//正答率を表示/非表示にする
 		void monitor_accuracy(bool monitor_accuracy);
@@ -381,13 +410,12 @@ namespace tisaNET {
 		//訓練時の誤差をイテレーションごとに記録する(csv形式で)
 		void logging_error(const char* log_file);
 
-	private:
+	protected:
 		bool monitoring_accuracy = false;
 		bool log_error = false;
 		uint8_t back_prop_offset = 0;
 		uint8_t conv_count = 0;
 		std::string log_filename;
-		std::vector<layer> net_layer;
 		bool rasterized = false;
 		double (*Ef[2])(std::vector<std::vector<uint8_t>>&, std::vector<std::vector<double>>&) = { mean_squared_error,cross_entropy_error };
 		double (*Af[4])(double) = { sigmoid,ReLU,step,softmax };
