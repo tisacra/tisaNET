@@ -722,8 +722,12 @@ namespace tisaNET{
         }
 
         //paddingサイズきめる(ハーフパディング)
-        tmp.pad[0] = (((input_shape[0] - filter_shape[0]) / st + 1) * st - (input_shape[0] - filter_shape[0])) % st;
-        tmp.pad[1] = (((input_shape[1] - filter_shape[1]) / st + 1) * st - (input_shape[1] - filter_shape[1])) % st;
+
+        //tmp.pad[0] = (((input_shape[0] - filter_shape[0]) / st + 1) * st - (input_shape[0] - filter_shape[0])) % st;
+        //tmp.pad[1] = (((input_shape[1] - filter_shape[1]) / st + 1) * st - (input_shape[1] - filter_shape[1])) % st;
+        tmp.pad[0] = st - (input_shape[0] - filter_shape[0]) % st;
+        tmp.pad[1] = st - (input_shape[1] - filter_shape[1]) % st;
+
 
         if (tmp.pad[0] != 0 || tmp.pad[1] != 0) {
             tmp.padding_flag = true;
@@ -733,6 +737,10 @@ namespace tisaNET{
         tmp.output_dim3[0] = (input_shape[0] - filter_shape[0] + tmp.pad[0]) / st + 1;
         tmp.output_dim3[1] = (input_shape[1] - filter_shape[1] + tmp.pad[1]) / st + 1;
         tmp.output_dim3[2] = (input_shape[2] / filter_shape[2]) * f_num;
+
+        tmp.filter_output_dim3[0] = (input_shape[0] - filter_shape[0] + tmp.pad[0]) / st + 1;
+        tmp.filter_output_dim3[1] = (input_shape[1] - filter_shape[1] + tmp.pad[1]) / st + 1;
+        tmp.filter_output_dim3[2] = input_shape[2] / filter_shape[2];
 
         tmp.Output = std::vector<double>(tmp.output_dim3[0] * tmp.output_dim3[1] * tmp.output_dim3[2]);
         tmp.Output_mat = std::vector<tisaMat::matrix>(tmp.output_dim3[2],tisaMat::matrix(tmp.output_dim3[0], tmp.output_dim3[1]));
@@ -775,9 +783,13 @@ namespace tisaNET{
             exit(EXIT_FAILURE);
         }
 
+
         //paddingサイズきめる(ハーフパディング)
-        tmp.pad[0] = (((net_layer.back().output_dim3[0] - filter_shape[0]) / st + 1) * st - (net_layer.back().output_dim3[0] - filter_shape[0])) % st;
-        tmp.pad[1] = (((net_layer.back().output_dim3[1] - filter_shape[1]) / st + 1) * st - (net_layer.back().output_dim3[1] - filter_shape[1])) % st;
+
+        //tmp.pad[0] = (((net_layer.back().output_dim3[0] - filter_shape[0]) / st + 1) * st - (net_layer.back().output_dim3[0] - filter_shape[0])) % st;
+        //tmp.pad[1] = (((net_layer.back().output_dim3[1] - filter_shape[1]) / st + 1) * st - (net_layer.back().output_dim3[1] - filter_shape[1])) % st;
+        tmp.pad[0] = st - (net_layer.back().output_dim3[0] - filter_shape[0]) % st;
+        tmp.pad[1] = st - (net_layer.back().output_dim3[1] - filter_shape[1]) % st;
 
         if (tmp.pad[0] != 0 || tmp.pad[1] != 0) {
             tmp.padding_flag = true;
@@ -787,6 +799,10 @@ namespace tisaNET{
         tmp.output_dim3[0] = (net_layer.back().output_dim3[0] - filter_shape[0] + tmp.pad[0]) / st + 1;
         tmp.output_dim3[1] = (net_layer.back().output_dim3[1] - filter_shape[1] + tmp.pad[1]) / st + 1;
         tmp.output_dim3[2] = (net_layer.back().output_dim3[2] / filter_shape[2]) * f_num;
+
+        tmp.filter_output_dim3[0] = (net_layer.back().output_dim3[0] - filter_shape[0] + tmp.pad[0]) / st + 1;
+        tmp.filter_output_dim3[1] = (net_layer.back().output_dim3[1] - filter_shape[1] + tmp.pad[1]) / st + 1;
+        tmp.filter_output_dim3[2] = net_layer.back().output_dim3[2] / filter_shape[2];
 
         tmp.Output = std::vector<double>(tmp.output_dim3[0] * tmp.output_dim3[1] * tmp.output_dim3[2]);
         tmp.Output_mat = std::vector<tisaMat::matrix>(tmp.output_dim3[2], tisaMat::matrix(tmp.output_dim3[0], tmp.output_dim3[1]));
@@ -835,6 +851,10 @@ namespace tisaNET{
         tmp.output_dim3[0] = (input_shape[0] + tmp.pad[0])/ filter_shape[0];
         tmp.output_dim3[1] = (input_shape[1] + tmp.pad[1])/ filter_shape[1];
         tmp.output_dim3[2] = input_shape[2] / filter_shape[2];
+
+        tmp.filter_output_dim3[0] = (input_shape[0] + tmp.pad[0]) / filter_shape[0];
+        tmp.filter_output_dim3[1] = (input_shape[1] + tmp.pad[1]) / filter_shape[1];
+        tmp.filter_output_dim3[2] = input_shape[2] / filter_shape[2];
 
         tmp.Output = std::vector<double>(tmp.output_dim3[0] * tmp.output_dim3[1] * tmp.output_dim3[2]);
         tmp.Output_mat = std::vector<tisaMat::matrix>(tmp.output_dim3[2], tisaMat::matrix(tmp.output_dim3[0], tmp.output_dim3[1]));
@@ -892,64 +912,62 @@ namespace tisaNET{
         net_layer.push_back(tmp);
     }
 
-    //1次元になった2次元データを畳み込む
+    //1次元になった3次元データを畳み込む
     void layer::convolute(std::vector<double>& input) {
         double tmp_sum;
         uint16_t row = input_dim3[0];
         uint16_t column = input_dim3[1];
         uint8_t filter_row = filter_dim3[0];
         uint8_t filter_column = filter_dim3[1];
-        uint8_t dpt = filter_dim3[2];
+        uint8_t filter_dpt = filter_dim3[2];
         uint8_t f_num = filter_num;
         uint16_t route_row = output_dim3[0];
         uint16_t route_col = output_dim3[1];
+        uint16_t route_dpt = input_dim3[2] / filter_dim3[2];
         uint16_t filter_size2D = filter_row * filter_column;
         uint16_t feature_size = (row + pad[0]) * (column + pad[1]);
         double tmp_max = 0.0;
 
-        std::vector<double> input_use;
+        uint16_t origin_shape[3] = { row,column,input_dim3[2] };
+        std::vector<tisaMat::matrix> input_use = conv_vect_to_mat(input, origin_shape);
         //必要ならハーフパディング
         if (padding_flag) {
-            uint16_t origin_shape[3] = {row,column,dpt};
-            std::vector<tisaMat::matrix> tmp_mat = conv_vect_to_mat(input,origin_shape);
-            for (int i = 0; i < dpt;i++) {
-                tmp_mat[i] = zero_padding_half(tmp_mat[i], pad[0], pad[1]);
+            for (int i = 0; i < input_dim3[2];i++) {
+                input_use[i] = zero_padding_half(input_use[i], pad[0], pad[1]);
             }
-            input_use = conv_mat_to_vect(tmp_mat);
         }
         else {
-            input_use = input;
         }
 
         //畳み込みできるかチェック
-        if (feature_size * dpt != input_use.size()) {
-            printf("input shape incorrect|!| input : %4d setting : ( %4d, %4d) * %3d\n",input_use.size(),row,column,dpt);
+        if (feature_size * filter_dpt != feature_size * input_dim3[2]) {
+            printf("input shape incorrect|!| input : %4d setting : ( %4d, %4d) * %3d\n",input_use.size(),row,column,filter_dpt);
             exit(EXIT_FAILURE);
         }
 
-        for (int c_f = 0; c_f < f_num;c_f++) {
-            for (int base_row = 0; base_row < route_row; base_row++) {
-                for (int base_col = 0; base_col < route_col; base_col++) {
-                    tmp_sum = 0.;
-                    //畳み込む(フィルターかける)
-                    for (int c_f_dpt = 0; c_f_dpt < dpt;c_f_dpt++) {
-                        for (int i = 0; i < filter_row; i++) {
-                            for (int j = 0; j < filter_column; j++) {
-                                tmp_sum += W->elements[c_f][(c_f_dpt * filter_size2D) + i * filter_column + j] * input_use[(c_f_dpt * feature_size) + ((i + base_row * stride) * input_dim3[1]) + (j + base_col * stride)];
-                                
+        for (int c_f = 0; c_f < f_num; c_f++) {
+            for (int current_map = 0; current_map < route_dpt; current_map++) {
+                for (int base_row = 0; base_row < route_row; base_row++) {
+                    for (int base_col = 0; base_col < route_col; base_col++) {
+                        tmp_sum = 0.;
+                        //畳み込む(フィルターかける)
+                        for (int c_f_dpt = 0; c_f_dpt < filter_dpt; c_f_dpt++) {
+                            for (int i = 0; i < filter_row; i++) {
+                                for (int j = 0; j < filter_column; j++) {
+                                    tmp_sum += W->elements[c_f][(c_f_dpt * filter_size2D) + i * filter_column + j]
+                                        * input_use[current_map].elements[i + base_row * stride][j + base_col * stride];
+                                }
                             }
                         }
-                    }
-                    
-                    tmp_sum += B[c_f];
-                    Output[(c_f * route_row * route_col) + (base_row * route_col) + base_col] = tmp_sum;
-                    if (tmp_sum > tmp_max) {
-                        tmp_max = tmp_sum;
+                        tmp_sum += B[c_f];
+                        Output[(c_f * route_row * route_col) + (base_row * route_col) + base_col] = tmp_sum;
+                        if (tmp_sum > tmp_max) {
+                            tmp_max = tmp_sum;
+                        }
                     }
                 }
             }
-        }
-        
+        }        
 
         /*
         //最大値で平均
@@ -970,7 +988,7 @@ namespace tisaNET{
         uint16_t column = input_dim3[1];
         uint8_t filter_row = filter_dim3[0];
         uint8_t filter_column = filter_dim3[1];
-        uint8_t dpt = filter_dim3[2];
+        uint8_t filter_dpt = filter_dim3[2];
         uint8_t f_num = filter_num;
         uint16_t route_row = output_dim3[0];
         uint16_t route_col = output_dim3[1];
@@ -982,7 +1000,7 @@ namespace tisaNET{
         std::vector<tisaMat::matrix> input_use(route_dpt, tisaMat::matrix(row,column));
         //必要ならハーフパディング
         if (padding_flag) {
-            for (int i = 0; i < dpt; i++) {
+            for (int i = 0; i < input_dim3[2]; i++) {
                 input_use[i] = zero_padding_half(input[i], pad[0], pad[1]);
             }
         }
@@ -996,7 +1014,7 @@ namespace tisaNET{
                     for (int base_col = 0; base_col < route_col; base_col++) {
                         tmp_sum = 0.;
                         //畳み込む(フィルターかける)
-                        for (int c_f_dpt = 0; c_f_dpt < dpt; c_f_dpt++) {
+                        for (int c_f_dpt = 0; c_f_dpt < filter_dpt; c_f_dpt++) {
                             for (int i = 0; i < filter_row; i++) {
                                 for (int j = 0; j < filter_column; j++) {
                                     tmp_sum += W->elements[c_f][(c_f_dpt * filter_size2D) + i * filter_column + j]
@@ -1031,7 +1049,8 @@ namespace tisaNET{
                     Output_mat[k].elements[i][j] = Af[get_Af(Activation_f)](Output_mat[k].elements[i][j]);
                 }
             }
-        }        
+        }
+        output_mat_to_vec();
     }
 
     void layer::max_pooling(std::vector<double>& input) {
@@ -2141,7 +2160,7 @@ namespace tisaNET{
         }
     }
 
-    void Model::save_model(const char* filename) {
+    void Model::save_model(std::string filename) {
         std::ofstream file(filename,std::ios::binary);
         if (!file) {
             printf("failed to open file : %s\n",filename);
@@ -2300,215 +2319,134 @@ namespace tisaNET{
         strftime(ts, 20, "%Y/%m/%d %H:%M:%S", &timestr);
         printf("<trainning started at %s>\n",ts);
 
-        //CSV形式で誤差を記録する準備
+        std::ofstream o_file;
+        //log_fileを作る時と作らない時のコードを統合
         if (log_error) {
-            std::ofstream o_file(log_filename);
+            o_file = std::ofstream(log_filename);
             if (!o_file) {
                 printf("failed to open file : %s\n", log_filename);
                 exit(EXIT_FAILURE);
             }
             o_file << "epoc,Error" << '\n';
+        }
 
-            for (int ep = 0; ep < epoc; ep++) {
-                printf("| epoc : %6d / %6d|\n", ep+1, epoc);
+        for (int ep = 0; ep < epoc; ep++) {
+            if (stop_flag && stop_mode == Current_Epoc) {
+                goto finish;
+            }
+            printf("\033[2K");
+            printf("| epoc : %6d / %6d|\n", ep+1, epoc);
 
-                data_shuffle(train_data);
+            data_shuffle(train_data);
 
-                for (int i = 0; i < iteration; i++) {
-
-                    if (train_data.data.size() < batch_size * i) break;
-
-                    //次のイテレーションでつかう入力の行列をつくる
-                    for (int j = 0; j < batch_size; j++) {
-                        input_iterate.elements[j] = tisaMat::vector_cast<double>(train_data.data[(batch_size * i) + j]);
-                        teach_iterate[j] = train_data.answer[(batch_size * i) + j];
-                    }
-
-                    //printf("| epoc : %6d |",ep);
-
-
-                    //printf("input\n");
-                    //input_iterate.show();
-                    output_iterate = feed_forward(input_iterate, trainer);
-
-                    //printf("output\n");
-                    //output_iterate.show();
-                    //printf("answer\n");
-                    //tisaMat::matrix answer_matrix(teach_iterate);
-                    //answer_matrix.show();
-
-
-                    error = (*Ef[Error_func])(teach_iterate, output_iterate.elements);//ここではじめて？nan
-                    //printf("|%6d iterate|Error   :  %lf\n", i,error);
-
-                    o_file << float(ep) + float(i+1.0)/float(iteration) << ',' << error << '\n';
-
-                    bool have_error = 0;
-                    if (error != 0.0) {
-                        have_error = 1;
-                    }
-
-                    if (have_error) {
-                        B_propagate(teach_iterate, output_iterate, Error_func, trainer, learning_rate, input_iterate);
-                        //B_propagate2(teach_iterate, output_iterate, Error_func, trainer, learning_rate, input_iterate);
-                        //トレーナーの値を使って重みを調整する
-                        for (int layer = back_prop_offset; layer < net_layer.size(); layer++) {
-                            if (!net_layer[layer].is_pool_layer()) {
-                                //重み
-                                *(net_layer[layer].W) = tisaMat::matrix_subtract(*net_layer[layer].W, *trainer[layer - back_prop_offset].dW);
-                                //printf("%d layer dW\n", layer);
-                                //trainer[layer - 1].dW->show();
-                                //バイアス
-                                net_layer[layer].B = tisaMat::vector_subtract(net_layer[layer].B, trainer[layer - back_prop_offset].dB);
-                                //printf("%d layer dB\n", layer);
-                                //tisaMat::vector_show(trainer[layer - 1].dB);
-                            }
-                        }
-                    }
-
-                    show_train_progress(iteration, i);
+            for (int i = 0; i < iteration; i++) {
+                if (pause_flag) {
+                    pause_trainning();
                 }
-                printf("\n");
-                /*
-                //今の重みとか表示(デバッグ用)
-                for (int layer = back_prop_offset; layer < net_layer.size(); layer++) {
-                    //重み
-                    printf("W\n");
-                    net_layer[layer].W->show();
-                    //バイアス
-                    printf("B\n");
-                    tisaMat::vector_show(net_layer[layer].B);
+                if (stop_flag && stop_mode == Just_Now) {
+                    goto finish;
                 }
-                */
 
-                //テスト(output_iterateは使いまわし)
-                output_iterate = feed_forward(test_mat);
-                printf("| TEST |");
-                //printf("test_input\n");
-                //test_mat.show();
-                //printf("test_output\n");
+                if (train_data.data.size() < batch_size * i) break;
+
+                //次のイテレーションでつかう入力の行列をつくる
+                for (int j = 0; j < batch_size; j++) {
+                    input_iterate.elements[j] = tisaMat::vector_cast<double>(train_data.data[(batch_size * i) + j]);
+                    teach_iterate[j] = train_data.answer[(batch_size * i) + j];
+                }
+
+                //printf("| epoc : %6d |",ep);
+
+
+                //printf("input\n");
+                //input_iterate.show();
+                output_iterate = feed_forward(input_iterate, trainer);
+
+                //printf("output\n");
                 //output_iterate.show();
-                t = time(nullptr);
-#ifdef _MSC_VER
-                localtime_r(&t, &timestr);
-#else
-                localtime_s(&timestr, &t);
-#endif
-                strftime(ts, 20, "%Y/%m/%d %H:%M:%S", &timestr);
-                error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
-                printf("Error : %lf <timestamp : %s>\n", error, ts);
-                clear_under_cl(net_layer.size());
-                if (monitoring_accuracy == true) {
-                    m_a(output_iterate.elements, test_data.answer, Error_func);
+                //printf("answer\n");
+                //tisaMat::matrix answer_matrix(teach_iterate);
+                //answer_matrix.show();
+
+
+                error = (*Ef[Error_func])(teach_iterate, output_iterate.elements);//ここではじめて？nan
+                //printf("|%6d iterate|Error   :  %lf\n", i,error);
+                    
+                if (log_error) {
+                    o_file << float(ep) + float(i + 1.0) / float(iteration) << ',' << error << '\n';
+                }
+                    
+                bool have_error = 0;
+                if (error != 0.0) {
+                    have_error = 1;
                 }
 
-                if (error == 0.0) {
-                    break;
+                if (have_error) {
+                    B_propagate(teach_iterate, output_iterate, Error_func, trainer, learning_rate, input_iterate);
+                    //B_propagate2(teach_iterate, output_iterate, Error_func, trainer, learning_rate, input_iterate);
+                    //トレーナーの値を使って重みを調整する
+                    for (int layer = back_prop_offset; layer < net_layer.size(); layer++) {
+                        if (!net_layer[layer].is_pool_layer()) {
+                            //重み
+                            *(net_layer[layer].W) = tisaMat::matrix_subtract(*net_layer[layer].W, *trainer[layer - back_prop_offset].dW);
+                            //printf("%d layer dW\n", layer);
+                            //trainer[layer - 1].dW->show();
+                            //バイアス
+                            net_layer[layer].B = tisaMat::vector_subtract(net_layer[layer].B, trainer[layer - back_prop_offset].dB);
+                            //printf("%d layer dB\n", layer);
+                            //tisaMat::vector_show(trainer[layer - 1].dB);
+                        }
+                        /*
+                        if (net_layer[layer].is_conv_layer()) {
+                            net_layer[layer].W_normalization();
+                        }
+                        */
+                        
+                    }
                 }
+                if(net_view)show_net_process(input_iterate.elements[batch_size - 1]);
+                show_train_progress(iteration, i);
+            }
+            printf("\n");
+            /*
+            //今の重みとか表示(デバッグ用)
+            for (int layer = back_prop_offset; layer < net_layer.size(); layer++) {
+                //重み
+                printf("W\n");
+                net_layer[layer].W->show();
+                //バイアス
+                printf("B\n");
+                tisaMat::vector_show(net_layer[layer].B);
+            }
+            */
+
+            //テスト(output_iterateは使いまわし)
+            output_iterate = feed_forward(test_mat);
+            printf("| TEST |");
+            //printf("test_input\n");
+            //test_mat.show();
+            //printf("test_output\n");
+            //output_iterate.show();
+            t = time(nullptr);
+#ifdef _MSC_VER
+            localtime_r(&t, &timestr);
+#else
+            localtime_s(&timestr, &t);
+#endif
+            strftime(ts, 20, "%Y/%m/%d %H:%M:%S", &timestr);
+            error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
+            printf("Error : %lf <timestamp : %s>\n", error, ts);
+            clear_under_cl(net_layer.size());
+            if (monitoring_accuracy == true) {
+                m_a(output_iterate.elements, test_data.answer, Error_func);
             }
 
-        }
-        else {
-            for (int ep = 0; ep < epoc; ep++) {
-                printf("\033[2K");
-                printf("| epoc : %6d / %6d|\n", ep+1,epoc);
-
-                data_shuffle(train_data);
-
-                for (int i = 0; i < iteration; i++) {
-
-                    if (train_data.data.size() < batch_size * i) break;
-
-                    //次のイテレーションでつかう入力の行列をつくる
-                    for (int j = 0; j < batch_size; j++) {
-                        input_iterate.elements[j] = tisaMat::vector_cast<double>(train_data.data[(batch_size * i) + j]);
-                        teach_iterate[j] = train_data.answer[(batch_size * i) + j];
-                    }
-
-                    //printf("| epoc : %6d |",ep);
-
-
-                    //printf("input\n");
-                    //input_iterate.show();
-                    output_iterate = feed_forward(input_iterate, trainer);
-
-                    //printf("output\n");
-                    //output_iterate.show();
-                    //printf("answer\n");
-                    //tisaMat::matrix answer_matrix(teach_iterate);
-                    //answer_matrix.show();
-
-
-                    error = (*Ef[Error_func])(teach_iterate, output_iterate.elements);//ここではじめて？nan
-                    //printf("|%6d iterate|Error   :  %lf\n", i, error);
-
-                    bool have_error = 0;
-                    if (error != 0.0) {
-                        have_error = 1;
-                    }
-
-                    if (have_error) {
-                        B_propagate(teach_iterate, output_iterate, Error_func, trainer, learning_rate, input_iterate);
-                        //B_propagate2(teach_iterate, output_iterate, Error_func, trainer, learning_rate, input_iterate);
-                        //トレーナーの値を使って重みを調整する
-                        for (int layer = back_prop_offset; layer < net_layer.size(); layer++) {
-                            if (!net_layer[layer].is_pool_layer()) {
-                                //重み
-                                *(net_layer[layer].W) = tisaMat::matrix_subtract(*net_layer[layer].W, *trainer[layer - back_prop_offset].dW);
-                                //printf("%d layer dW\n", layer);
-                                //trainer[layer - 1].dW->show();
-                                //バイアス
-                                net_layer[layer].B = tisaMat::vector_subtract(net_layer[layer].B, trainer[layer - back_prop_offset].dB);
-                                //printf("%d layer dB\n", layer);
-                                //tisaMat::vector_show(trainer[layer - 1].dB);
-                            }
-                            if (net_layer[layer].is_conv_layer()) {
-                                net_layer[layer].W_normalization();
-                            }
-                        }
-                    }
-
-                    show_train_progress(iteration,i);
-                }
-                printf("\n");
-                /*
-                //今の重みとか表示(デバッグ用)
-                for (int layer = back_prop_offset; layer < net_layer.size(); layer++) {
-                    //重み
-                    printf("W\n");
-                    net_layer[layer].W->show();
-                    //バイアス
-                    printf("B\n");
-                    tisaMat::vector_show(net_layer[layer].B);
-                }
-                */
-
-                //テスト(output_iterateは使いまわし)
-                output_iterate = feed_forward(test_mat);
-                printf("| TEST |");
-                //printf("test_input\n");
-                //test_mat.show();
-                //printf("test_output\n");
-                //output_iterate.show();
-                t = time(nullptr);
-#ifdef _MSC_VER
-                localtime_r(&t, &timestr);
-#else
-                localtime_s(&timestr, &t);
-#endif
-                strftime(ts,20,"%Y/%m/%d %H:%M:%S",&timestr);
-                error = (*Ef[Error_func])(test_data.answer, output_iterate.elements);
-                printf("Error : %lf <timestamp : %s>\n", error,ts);
-                clear_under_cl(net_layer.size());
-                if (monitoring_accuracy == true) {
-                    m_a(output_iterate.elements, test_data.answer, Error_func);
-                }
-
-                if (error == 0.0) {
-                    break;
-                }
+            if (error == 0.0) {
+                break;
             }
         }
+        
+        finish:
         printf("\ntraining complete!\n");
     }
 

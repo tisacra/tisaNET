@@ -52,6 +52,11 @@
 struct tm* localtime_r(const time_t* time, struct tm* resultp);
 #endif
 
+enum stop_mode_name {
+	Just_Now,
+	Current_Epoc,
+};
+
 namespace tisaNET {
 
 	static const char* Af_name[7] = { "SIGMOID","RELU   ","STEP   ","SOFTMAX","INPUT  ","SIMPLE_CONVOLUTE","NORMALINE" };
@@ -102,6 +107,7 @@ namespace tisaNET {
 		//filter_dimをpoolingにも流用する
 		uint8_t filter_dim3[3];
 		uint16_t output_dim3[3];
+		uint16_t filter_output_dim3[3];
 		uint8_t pad[2] = {0,0};
 		bool padding_flag = false;
 		uint8_t filter_num = 1;
@@ -285,7 +291,7 @@ namespace tisaNET {
 		}
 
 		//訓練用入力
-		virtual void input_data(std::vector<double>& data, std::vector<Trainer> &trainer,int index) {
+		void input_data(std::vector<double>& data, std::vector<Trainer> &trainer,int index) {
 			int input_num = data.size();
 			if (net_layer.front().node != input_num) {
 				printf("input error|!|\n");
@@ -377,6 +383,7 @@ namespace tisaNET {
 				}
 			}
 			output_vecter = net_layer.back().Output;
+			if(net_view) emit_output(output_vecter);
 			return output_vecter;
 		}
 
@@ -384,7 +391,7 @@ namespace tisaNET {
 		tisaMat::matrix feed_forward(tisaMat::matrix& Input_data, std::vector<Trainer>& trainer);
 
 		//Qt併用時のための関数
-		virtual void emit_output(std::vector<double>) {  }
+		virtual void emit_output(std::vector<double>) {  };
 
 		//逆誤差伝播する
 		void B_propagate(std::vector<std::vector<uint8_t>>& teacher, tisaMat::matrix& output, uint8_t error_func, std::vector<Trainer>& trainer,double lr, tisaMat::matrix& input_batch);
@@ -402,13 +409,14 @@ namespace tisaNET {
 		void load_model(const char* tp_file);
 
 		//モデルをファイルに出力する
-		virtual void save_model(const char* tp_file);
+		virtual void save_model(std::string tp_file);
 
 		//正答率を表示/非表示にする
 		void monitor_accuracy(bool monitor_accuracy);
 
 		//訓練時の誤差をイテレーションごとに記録する(csv形式で)
 		void logging_error(const char* log_file);
+
 
 	protected:
 		bool monitoring_accuracy = false;
@@ -422,6 +430,12 @@ namespace tisaNET {
 		void m_a(std::vector<std::vector<double>>& output, std::vector<std::vector<uint8_t>>& answer, uint8_t error_func);
 		std::vector<std::vector<double>> b_p_deconv(tisaMat::matrix input, std::vector<tisaMat::matrix> filter);
 		std::vector<std::vector<double>> de_max_pool(tisaMat::matrix E, std::vector<std::vector<std::array<int, 3>>> trainer, uint16_t* input_shape, uint8_t* filt_shape);
+		virtual void show_net_process(std::vector<double>& data) {};
+		virtual void pause_trainning() {};
+		bool pause_flag = false;
+		int stop_mode;
+		bool stop_flag = false;
+		bool net_view = false;
 	};
 
 	void show_train_progress(int total_iteration,int now_iteration);

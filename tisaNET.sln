@@ -15,6 +15,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "eval_MNIST", "eval_MNIST\ev
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_comv", "test_comv\test_comv.vcxproj", "{1DF5782A-AC24-456F-A818-FE7B93B03E76}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tisaNET_NetViewer", "tisaNET_NetViewer\tisaNET_NetViewer.vcxproj", "{37CD2A30-2AA5-40D7-905D-E24252350B6B}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_tisaNET_Qt", "test_tisaNET_Qt\test_tisaNET_Qt.vcxproj", "{10D8BEE9-4C2D-437C-9EAA-B704740D6664}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tisaNET_Qt", "tisaNET_Qt\tisaNET_Qt.vcxproj", "{CA27A7F2-7643-4658-8CAF-5B39B785367B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -71,6 +77,24 @@ Global
 		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Release|x64.Build.0 = Release|x64
 		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Release|x86.ActiveCfg = Release|Win32
 		{1DF5782A-AC24-456F-A818-FE7B93B03E76}.Release|x86.Build.0 = Release|Win32
+		{37CD2A30-2AA5-40D7-905D-E24252350B6B}.Debug|x64.ActiveCfg = Debug|x64
+		{37CD2A30-2AA5-40D7-905D-E24252350B6B}.Debug|x64.Build.0 = Debug|x64
+		{37CD2A30-2AA5-40D7-905D-E24252350B6B}.Debug|x86.ActiveCfg = Debug|x64
+		{37CD2A30-2AA5-40D7-905D-E24252350B6B}.Release|x64.ActiveCfg = Release|x64
+		{37CD2A30-2AA5-40D7-905D-E24252350B6B}.Release|x64.Build.0 = Release|x64
+		{37CD2A30-2AA5-40D7-905D-E24252350B6B}.Release|x86.ActiveCfg = Release|x64
+		{10D8BEE9-4C2D-437C-9EAA-B704740D6664}.Debug|x64.ActiveCfg = Debug|x64
+		{10D8BEE9-4C2D-437C-9EAA-B704740D6664}.Debug|x64.Build.0 = Debug|x64
+		{10D8BEE9-4C2D-437C-9EAA-B704740D6664}.Debug|x86.ActiveCfg = Debug|x64
+		{10D8BEE9-4C2D-437C-9EAA-B704740D6664}.Release|x64.ActiveCfg = Release|x64
+		{10D8BEE9-4C2D-437C-9EAA-B704740D6664}.Release|x64.Build.0 = Release|x64
+		{10D8BEE9-4C2D-437C-9EAA-B704740D6664}.Release|x86.ActiveCfg = Release|x64
+		{CA27A7F2-7643-4658-8CAF-5B39B785367B}.Debug|x64.ActiveCfg = Debug|x64
+		{CA27A7F2-7643-4658-8CAF-5B39B785367B}.Debug|x64.Build.0 = Debug|x64
+		{CA27A7F2-7643-4658-8CAF-5B39B785367B}.Debug|x86.ActiveCfg = Debug|x64
+		{CA27A7F2-7643-4658-8CAF-5B39B785367B}.Release|x64.ActiveCfg = Release|x64
+		{CA27A7F2-7643-4658-8CAF-5B39B785367B}.Release|x64.Build.0 = Release|x64
+		{CA27A7F2-7643-4658-8CAF-5B39B785367B}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
